@@ -13,6 +13,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.ImageConsumer;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
@@ -54,66 +55,59 @@ public class MapImage extends MapObject {
     @Override
     public void render(MapView mapView, MapCanvas mapCanvas, PlayerTag player, UUID uuid) {
         try {
+            actualFile = DenizenMapManager.getActualFile(fileTag);
             if (actualFile == null) {
-                actualFile = DenizenMapManager.getActualFile(fileTag);
-                if (actualFile == null) {
-                    disabled = true;
-                    return;
+                disabled = true;
+                return;
+            }
+            imageIcon = new ImageIcon(actualFile);
+            imageIcon.getImage().flush();
+            imageIcon = new ImageIcon(actualFile);
+            image = imageIcon.getImage();
+            image.getSource().addConsumer(new ImageConsumer() {
+                @Override
+                public void setDimensions(int width, int height) {
                 }
-                imageIcon = new ImageIcon(actualFile);
-                image = imageIcon.getImage();
-                image.getSource().addConsumer(new ImageConsumer() {
-                    @Override
-                    public void setDimensions(int width, int height) {
-                    }
 
-                    @Override
-                    public void setProperties(Hashtable<?, ?> props) {
-                    }
-
-                    @Override
-                    public void setColorModel(ColorModel model) {
-                    }
-
-                    @Override
-                    public void setHints(int hintflags) {
-                    }
-
-                    @Override
-                    public void setPixels(int x, int y, int w, int h, ColorModel model, byte[] pixels, int off, int scansize) {
-                        // When the internal pixels are updated, the cache is no longer current.
-                        cachedImageData = null;
-                        renderer.hasChanged = true;
-                    }
-
-                    @Override
-                    public void setPixels(int x, int y, int w, int h, ColorModel model, int[] pixels, int off, int scansize) {
-                    }
-
-                    @Override
-                    public void imageComplete(int status) {
-                    }
-                });
-                if (width == 0) {
-                    width = image.getWidth(null);
+                @Override
+                public void setProperties(Hashtable<?, ?> props) {
                 }
-                if (height == 0) {
-                    height = image.getHeight(null);
+
+                @Override
+                public void setColorModel(ColorModel model) {
                 }
-                if (width == -1 || height == -1) {
-                    Debug.echoError("Image loading failed (bad width/height) for image " + fileTag);
-                    disabled = true;
-                    return;
+
+                @Override
+                public void setHints(int hintflags) {
                 }
-                disabled = false;
+
+                @Override
+                public void setPixels(int x, int y, int w, int h, ColorModel model, byte[] pixels, int off, int scansize) {
+                    // When the internal pixels are updated, the cache is no longer current.
+                    cachedImageData = null;
+                    renderer.hasChanged = true;
+                }
+
+                @Override
+                public void setPixels(int x, int y, int w, int h, ColorModel model, int[] pixels, int off, int scansize) {
+                }
+
+                @Override
+                public void imageComplete(int status) {
+                }
+            });
+            if (width == 0) {
+                width = image.getWidth(null);
+            }
+            if (height == 0) {
+                height = image.getHeight(null);
             }
             if (disabled) {
                 return;
             }
             // Use custom functions to draw image to allow transparency and reduce lag intensely
-            byte[] bytes;
-            if (cachedImageData == null || image != imageForCache) {
-                bytes = imageToBytes(image, width, height);
+            byte[] bytes = imageToBytes(image, width, height);
+            if (!Arrays.equals(cachedImageData, bytes) || image != imageForCache) {
                 if (bytes == null) {
                     Debug.echoError("Image loading failed (bad imageToBytes) for image " + fileTag);
                     disabled = true;
