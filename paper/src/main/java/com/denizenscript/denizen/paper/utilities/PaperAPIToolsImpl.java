@@ -4,7 +4,7 @@ import com.denizenscript.denizen.Denizen;
 import com.denizenscript.denizen.nms.NMSHandler;
 import com.denizenscript.denizen.nms.NMSVersion;
 import com.denizenscript.denizen.paper.PaperModule;
-import com.denizenscript.denizen.utilities.AdvancedTextImpl;
+import com.denizenscript.denizen.utilities.PaperAPITools;
 import com.denizenscript.denizencore.DenizenCore;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.destroystokyo.paper.profile.PlayerProfile;
@@ -18,15 +18,17 @@ import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.potion.PotionBrewer;
+import org.bukkit.util.Consumer;
 
 import java.util.*;
 
-public class PaperAdvancedTextImpl extends AdvancedTextImpl {
+public class PaperAPIToolsImpl extends PaperAPITools {
 
     @Override
     public Inventory createInventory(InventoryHolder holder, int slots, String title) {
@@ -39,14 +41,14 @@ public class PaperAdvancedTextImpl extends AdvancedTextImpl {
     }
 
     @Override
-    public String parseComponent(Object input, ChatColor baseColor) {
+    public String parseComponent(Object input) {
         if (input == null) {
             return null;
         }
         if (input instanceof Component) {
-            return PaperModule.stringifyComponent((Component) input, baseColor);
+            return PaperModule.stringifyComponent((Component) input);
         }
-        return super.parseComponent(input, baseColor);
+        return super.parseComponent(input);
     }
 
     @Override
@@ -62,7 +64,7 @@ public class PaperAdvancedTextImpl extends AdvancedTextImpl {
 
     @Override
     public String getCustomName(Entity entity) {
-        return PaperModule.stringifyComponent(entity.customName(), ChatColor.WHITE);
+        return PaperModule.stringifyComponent(entity.customName());
     }
 
     @Override
@@ -72,7 +74,7 @@ public class PaperAdvancedTextImpl extends AdvancedTextImpl {
 
     @Override
     public String getPlayerListName(Player player) {
-        return PaperModule.stringifyComponent(player.playerListName(), ChatColor.WHITE);
+        return PaperModule.stringifyComponent(player.playerListName());
     }
 
     @Override
@@ -80,7 +82,7 @@ public class PaperAdvancedTextImpl extends AdvancedTextImpl {
         String[] output = new String[4];
         int i = 0;
         for (Component component : sign.lines()) {
-            output[i++] = PaperModule.stringifyComponent(component, ChatColor.BLACK);
+            output[i++] = PaperModule.stringifyComponent(component);
         }
         return output;
     }
@@ -111,7 +113,7 @@ public class PaperAdvancedTextImpl extends AdvancedTextImpl {
 
     @Override
     public String getCustomName(Nameable object) {
-        return PaperModule.stringifyComponent(object.customName(), ChatColor.BLACK);
+        return PaperModule.stringifyComponent(object.customName());
     }
 
     @Override
@@ -160,7 +162,7 @@ public class PaperAdvancedTextImpl extends AdvancedTextImpl {
             return;
         }
         PotionBrewer brewer = Bukkit.getPotionBrewer();
-        for (NamespacedKey mix : potionMixes.keySet()) {
+        for (NamespacedKey mix : new ArrayList<>(potionMixes.keySet())) {
             brewer.removePotionMix(mix);
             potionMixes.remove(mix);
         }
@@ -189,7 +191,7 @@ public class PaperAdvancedTextImpl extends AdvancedTextImpl {
 
     @Override
     public String getDeathMessage(PlayerDeathEvent event) {
-        return PaperModule.stringifyComponent(event.deathMessage(), ChatColor.WHITE);
+        return PaperModule.stringifyComponent(event.deathMessage());
     }
 
     @Override
@@ -255,5 +257,15 @@ public class PaperAdvancedTextImpl extends AdvancedTextImpl {
             }
         }
         return null;
+    }
+
+    @Override
+    public <T extends Entity> T spawnEntity(Location location, Class<T> type, Consumer<T> configure, CreatureSpawnEvent.SpawnReason reason) {
+        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_18)) {
+            return location.getWorld().spawn(location, type, configure, reason);
+        }
+        else {
+            return super.spawnEntity(location, type, configure, reason);
+        }
     }
 }

@@ -10,6 +10,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -17,10 +18,11 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.Consumer;
 
-public class AdvancedTextImpl {
+public class PaperAPITools {
 
-    public static AdvancedTextImpl instance = new AdvancedTextImpl();
+    public static PaperAPITools instance = new PaperAPITools();
 
     public Inventory createInventory(InventoryHolder holder, int slots, String title) {
         return Bukkit.getServer().createInventory(holder, slots, title);
@@ -30,7 +32,7 @@ public class AdvancedTextImpl {
         return Bukkit.getServer().createInventory(holder, type, title);
     }
 
-    public String parseComponent(Object input, ChatColor baseColor) {
+    public String parseComponent(Object input) {
         if (input == null) {
             return null;
         }
@@ -38,7 +40,7 @@ public class AdvancedTextImpl {
             return (String) input;
         }
         else if (input instanceof BaseComponent[]) {
-            return FormattedTextHelper.stringify((BaseComponent[]) input, baseColor);
+            return FormattedTextHelper.stringify((BaseComponent[]) input);
         }
         else if (input instanceof BaseComponent) {
             return FormattedTextHelper.stringify((BaseComponent) input);
@@ -133,5 +135,9 @@ public class AdvancedTextImpl {
 
     public void setSkinBlob(Player player, String blob) {
         NMSHandler.instance.getProfileEditor().setPlayerSkinBlob(player, blob);
+    }
+
+    public <T extends Entity> T spawnEntity(Location location, Class<T> type, Consumer<T> configure, CreatureSpawnEvent.SpawnReason reason) {
+        return location.getWorld().spawn(location, type, configure);
     }
 }

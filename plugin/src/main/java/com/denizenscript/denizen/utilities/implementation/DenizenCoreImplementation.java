@@ -139,9 +139,8 @@ public class DenizenCoreImplementation implements DenizenImplementation {
     public static HashSet<String> invalidPlayerArgCommands = new HashSet<>(Arrays.asList("DEFINE", "FLAG", "YAML"));
 
     @Override
-    public boolean handleCustomArgs(ScriptEntry scriptEntry, Argument arg, boolean if_ignore) {
-        // Fill player/off-line player
-        if (arg.matchesPrefix("player") && !if_ignore) {
+    public boolean handleCustomArgs(ScriptEntry scriptEntry, Argument arg) {
+        if (arg.matchesPrefix("player")) {
             if (invalidPlayerArgCommands.contains(scriptEntry.getCommandName())) {
                 invalidPlayerArg.warn(scriptEntry);
             }
@@ -155,9 +154,7 @@ public class DenizenCoreImplementation implements DenizenImplementation {
             ((BukkitTagContext) scriptEntry.context).player = player;
             return true;
         }
-
-        // Fill NPC argument
-        else if (arg.matchesPrefix("npc") && !if_ignore) {
+        else if (arg.matchesPrefix("npc")) {
             if (invalidPlayerArgCommands.contains(scriptEntry.getCommandName())) {
                 invalidNpcArg.warn(scriptEntry);
             }
@@ -362,39 +359,6 @@ public class DenizenCoreImplementation implements DenizenImplementation {
             return true;
         }
         return false;
-    }
-
-    public static boolean isPluginLoader, hasProcessedLoader;
-    public static Map<String, Class<?>> classMap;
-
-    public static void initClassLoaderRef() {
-        if (hasProcessedLoader) {
-            return;
-        }
-        hasProcessedLoader = true;
-        try {
-            ClassLoader loader = DenizenCoreImplementation.class.getClassLoader();
-            Class<?> pluginClassLoaderClass = Class.forName("org.bukkit.plugin.java.PluginClassLoader");
-            isPluginLoader = pluginClassLoaderClass.isAssignableFrom(loader.getClass());
-            if (isPluginLoader) {
-                classMap = ReflectionHelper.getFieldValue(pluginClassLoaderClass, "classes", loader);
-            }
-        }
-        catch (Throwable ex) {
-            Debug.echoError(ex);
-        }
-    }
-
-    @Override
-    public void saveClassToLoader(Class<?> clazz) {
-        initClassLoaderRef();
-        if (!isPluginLoader) {
-            return;
-        }
-        if (classMap.containsKey(clazz.getName())) {
-            Debug.echoError("Class " + clazz.getName() + " already defined?");
-        }
-        classMap.put(clazz.getName(), clazz);
     }
 
     @Override

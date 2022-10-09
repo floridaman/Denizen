@@ -10,9 +10,9 @@ import com.denizenscript.denizen.objects.WorldTag;
 import com.denizenscript.denizen.paper.events.*;
 import com.denizenscript.denizen.paper.properties.*;
 import com.denizenscript.denizen.paper.tags.PaperTagBase;
-import com.denizenscript.denizen.paper.utilities.PaperAdvancedTextImpl;
+import com.denizenscript.denizen.paper.utilities.PaperAPIToolsImpl;
 import com.denizenscript.denizen.utilities.FormattedTextHelper;
-import com.denizenscript.denizen.utilities.AdvancedTextImpl;
+import com.denizenscript.denizen.utilities.PaperAPITools;
 import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizencore.events.ScriptEvent;
 import com.denizenscript.denizencore.objects.properties.PropertyParser;
@@ -55,6 +55,7 @@ public class PaperModule {
         ScriptEvent.registerScriptEvent(ServerResourcesReloadedScriptEvent.class);
         ScriptEvent.registerScriptEvent(TNTPrimesScriptEvent.class);
         ScriptEvent.registerScriptEvent(UnknownCommandScriptEvent.class);
+        ScriptEvent.registerScriptEvent(WorldGameRuleChangeScriptEvent.class);
 
         // Properties
         PropertyParser.registerProperty(EntityArmsRaised.class, EntityTag.class);
@@ -79,7 +80,7 @@ public class PaperModule {
 
         // Other helpers
         Bukkit.getPluginManager().registerEvents(new PaperEventHelpers(), Denizen.getInstance());
-        AdvancedTextImpl.instance = new PaperAdvancedTextImpl();
+        PaperAPITools.instance = new PaperAPIToolsImpl();
     }
 
     public static Component parseFormattedText(String text, ChatColor baseColor) {
@@ -89,11 +90,11 @@ public class PaperModule {
         return jsonToComponent(ComponentSerializer.toString(FormattedTextHelper.parse(text, baseColor)));
     }
 
-    public static String stringifyComponent(Component component, ChatColor baseColor) {
+    public static String stringifyComponent(Component component) {
         if (component == null) {
             return null;
         }
-        return FormattedTextHelper.stringify(ComponentSerializer.parse(componentToJson(component)), baseColor);
+        return FormattedTextHelper.stringify(ComponentSerializer.parse(componentToJson(component)));
     }
 
     public static Component jsonToComponent(String json) {
