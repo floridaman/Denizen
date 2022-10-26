@@ -11,6 +11,7 @@ import com.denizenscript.denizencore.objects.ArgumentHelper;
 import com.denizenscript.denizencore.objects.core.ListTag;
 import com.denizenscript.denizencore.objects.core.MapTag;
 import com.denizenscript.denizencore.objects.core.ScriptTag;
+import com.denizenscript.denizencore.tags.TagManager;
 import com.denizenscript.denizencore.utilities.AsciiMatcher;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizen.utilities.implementation.BukkitScriptEntryData;
@@ -348,6 +349,8 @@ public class BukkitElementExtensions {
         // @group text manipulation
         // @description
         // Returns the element with all color encoding stripped.
+        // This will remove any/all colors, formats (bold/italic/etc), advanced formats (fonts/clickables/etc), and translate any translatables (&translate, &score, etc).
+        // This will automatically translate translatable sections
         // -->
         ElementTag.tagProcessor.registerStaticTag(ElementTag.class, "strip_color", (attribute, object) -> {
             return new ElementTag(FormattedTextHelper.parse(object.asString(), ChatColor.WHITE)[0].toPlainText());
@@ -361,6 +364,7 @@ public class BukkitElementExtensions {
         // Returns the element with all color codes parsed.
         // Optionally, specify a character to prefix the color ids. Defaults to '&' if not specified.
         // This allows old-style colors like '&b', or Essentials-style hex codes like '&#ff00ff'
+        // See also <@link tag ElementTag.parse_minimessage>
         // -->
         ElementTag.tagProcessor.registerStaticTag(ElementTag.class, "parse_color", (attribute, object) -> {
             char prefix = '&';
@@ -673,7 +677,11 @@ public class BukkitElementExtensions {
         // Note that this is a magic Denizen tool - refer to <@link language Denizen Text Formatting>.
         // -->
         ElementTag.tagProcessor.registerStaticTag(ElementTag.class, ElementTag.class, "custom_color", (attribute, object, name) -> {
-            return new ElementTag(ChatColor.COLOR_CHAR + "[color=f]" + CustomColorTagBase.getColor(name.asLowerString(), attribute.context) + object.asString() + ChatColor.COLOR_CHAR + "[reset=color]");
+            String color = CustomColorTagBase.getColor(name.asLowerString(), attribute.context);
+            if (color == null) {
+                return null;
+            }
+            return new ElementTag(ChatColor.COLOR_CHAR + "[color=f]" + color + object.asString() + ChatColor.COLOR_CHAR + "[reset=color]");
         });
 
         // <--[tag]
@@ -702,6 +710,9 @@ public class BukkitElementExtensions {
             }
             else if (colorName.startsWith("co@")) {
                 ColorTag color = ColorTag.valueOf(colorName, attribute.context);
+                if (color == null && TagManager.isStaticParsing) {
+                    return null;
+                }
                 StringBuilder hex = new StringBuilder(Integer.toHexString(color.getColor().asRGB()));
                 while (hex.length() < 6) {
                     hex.insert(0, "0");
@@ -715,7 +726,17 @@ public class BukkitElementExtensions {
                     colorOut = ChatColor.COLOR_CHAR + "[color=" + colorStr + "]";
                 }
                 catch (IllegalArgumentException ex) {
-                    attribute.echoError("Color '" + colorName + "' doesn't exist (for ElementTag.color[...]).");
+                    ColorTag color = ColorTag.valueOf(colorName, attribute.context);
+                    if (color != null) {
+                        StringBuilder hex = new StringBuilder(Integer.toHexString(color.getColor().asRGB()));
+                        while (hex.length() < 6) {
+                            hex.insert(0, "0");
+                        }
+                        return new ElementTag(ChatColor.COLOR_CHAR + "[color=#" + hex + "]" + object.asString() + ChatColor.COLOR_CHAR + "[reset=color]");
+                    }
+                    if (!TagManager.isStaticParsing) {
+                        attribute.echoError("Color '" + colorName + "' doesn't exist (for ElementTag.color[...]).");
+                    }
                     return null;
                 }
             }

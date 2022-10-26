@@ -12,7 +12,7 @@ Debug:
     # The max length of a line of debug output. Shorten this if your console is hard to read.
     Line length: 300
     # The max length of debug output. After this length, all further output will be cut off.
-    Trim length limit: 1024
+    Trim length limit: 4096
     # Whether to permit the "system.redirect_logging" mechanism
     Allow console redirection: false
     # Whether to send basic statistic information to the Denizen central server.
@@ -255,6 +255,8 @@ Tags:
     # The benefit of enabling this is it prevents locking the server thread to download the data from Mojang servers.
     # The risk is that it may interfere with other plugins or systems that expect correct data to be set.
     Nullify skull skin ids: false
+    # If true, polygons default to WorldEdit style block-inclusive logic. If false, use precise 'exclusive' logic.
+    Polygon default inclusive: false
 
 # Java Reflection is the toolkit for accessing raw underlying Java data.
 # Denizen partially exposes this, for example in 'JavaReflectedObjectTag', as some scripts may have use for this.
@@ -292,6 +294,10 @@ Saves:
     Skip flag cleaning: false
     # When set to 'true', skips flag cleaning for ChunkTag and LocationTag flags.
     Skip chunk flag cleaning: false
+    # When set to 'true', player flag autosaving will be delayed whenever world saves are disabled (eg via '/save-off').
+    # Player flags will still save as normal during shutdown, or when world saving is enabled.
+    # This checks based on your default world (server.worlds.first).
+    Only save if world save is on: false
 
 Packets:
     # Whether to allow Denizen to intercept packets from and to player clients.

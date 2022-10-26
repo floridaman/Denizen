@@ -9,6 +9,8 @@ import com.denizenscript.denizen.utilities.blocks.SpawnableHelper;
 import com.denizenscript.denizen.utilities.flags.DataPersistenceFlagTracker;
 import com.denizenscript.denizen.utilities.flags.LocationFlagSearchHelper;
 import com.denizenscript.denizen.utilities.world.PathFinder;
+import com.denizenscript.denizen.utilities.world.WorldListChangeTracker;
+import com.denizenscript.denizencore.tags.TagManager;
 import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizen.utilities.entity.DenizenEntityType;
 import com.denizenscript.denizencore.flags.AbstractFlagTracker;
@@ -94,6 +96,7 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
      * The world name if a world reference is bad.
      */
     public String backupWorld;
+    public int trackedWorldChange;
 
     public String getWorldName() {
         if (backupWorld != null) {
@@ -101,15 +104,20 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
         }
         World w = super.getWorld();
         if (w != null) {
-            return w.getName();
+            backupWorld = w.getName();
         }
-        return null;
+        return backupWorld;
     }
 
     @Override
     public World getWorld() {
         World w = super.getWorld();
         if (w != null) {
+            if (trackedWorldChange != WorldListChangeTracker.changes) {
+                trackedWorldChange = WorldListChangeTracker.changes;
+                super.setWorld(Bukkit.getWorld(getWorldName()));
+                return super.getWorld();
+            }
             return w;
         }
         if (backupWorld == null) {
@@ -163,9 +171,11 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
         if (string.startsWith("l@")) {
             string = string.substring(2);
         }
-        Notable noted = NoteManager.getSavedObject(string);
-        if (noted instanceof LocationTag) {
-            return (LocationTag) noted;
+        if (!TagManager.isStaticParsing) {
+            Notable noted = NoteManager.getSavedObject(string);
+            if (noted instanceof LocationTag) {
+                return (LocationTag) noted;
+            }
         }
         List<String> split = CoreUtilities.split(string, ',');
         if (split.size() == 2)
@@ -193,7 +203,7 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
                 if (worldName.startsWith("w@")) {
                     worldName = worldName.substring("w@".length());
                 }
-                World world = Bukkit.getWorld(worldName);
+                World world = TagManager.isStaticParsing ? null : Bukkit.getWorld(worldName);
                 if (world != null) {
                     return new LocationTag(world,
                             Double.parseDouble(split.get(0)),
@@ -227,7 +237,7 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
                 if (worldName.startsWith("w@")) {
                     worldName = worldName.substring("w@".length());
                 }
-                World world = Bukkit.getWorld(worldName);
+                World world = TagManager.isStaticParsing ? null : Bukkit.getWorld(worldName);
                 if (world != null) {
                     return new LocationTag(world,
                             Double.parseDouble(split.get(0)),
@@ -294,7 +304,7 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
                 return null;
             }
         }
-        if (context == null || context.showErrors()) {
+        if ((context == null || context.showErrors()) && !TagManager.isStaticParsing) {
             Debug.log("Minor: valueOf LocationTag returning null: " + string);
         }
         return null;
@@ -3501,7 +3511,7 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
         tagProcessor.registerTag(ElementTag.class, "vector_to_face", (attribute, object) -> {
             BlockFace face = Utilities.faceFor(object.toVector());
             if (face != null) {
-                return new ElementTag(face.name());
+                return new ElementTag(face);
             }
             return null;
         });
@@ -4356,7 +4366,7 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
                 attribute.echoError("Location is not a valid Sign block.");
                 return null;
             }
-            return new ElementTag(((Sign) state).getColor().name());
+            return new ElementTag(((Sign) state).getColor());
         });
 
         // <--[tag]
@@ -4408,13 +4418,13 @@ public class LocationTag extends org.bukkit.Location implements ObjectTag, Notab
             output.putObject("author", new ElementTag(structure.getAuthor()));
             output.putObject("integrity", new ElementTag(structure.getIntegrity()));
             output.putObject("metadata", new ElementTag(structure.getMetadata()));
-            output.putObject("mirror", new ElementTag(structure.getMirror().name()));
+            output.putObject("mirror", new ElementTag(structure.getMirror()));
             output.putObject("box_position", new LocationTag(structure.getRelativePosition()));
-            output.putObject("rotation", new ElementTag(structure.getRotation().name()));
+            output.putObject("rotation", new ElementTag(structure.getRotation()));
             output.putObject("seed", new ElementTag(structure.getSeed()));
             output.putObject("structure_name", new ElementTag(structure.getStructureName()));
             output.putObject("size", new LocationTag(structure.getStructureSize()));
-            output.putObject("mode", new ElementTag(structure.getUsageMode().name()));
+            output.putObject("mode", new ElementTag(structure.getUsageMode()));
             output.putObject("box_visible", new ElementTag(structure.isBoundingBoxVisible()));
             output.putObject("ignore_entities", new ElementTag(structure.isIgnoreEntities()));
             output.putObject("show_invisible", new ElementTag(structure.isShowAir()));

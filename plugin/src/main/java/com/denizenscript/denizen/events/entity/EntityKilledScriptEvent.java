@@ -37,7 +37,7 @@ public class EntityKilledScriptEvent extends BukkitScriptEvent implements Listen
     //
     // @Context
     // <context.entity> returns the EntityTag that was killed.
-    // <context.cause> returns the an ElementTag of reason the entity was damaged - see <@link language damage cause> for causes.
+    // <context.cause> returns an ElementTag of reason the entity was damaged - see <@link language damage cause> for causes.
     // <context.damage> returns an ElementTag(Decimal) of the amount of damage dealt.
     // <context.final_damage> returns an ElementTag(Decimal) of the amount of damage dealt, after armor is calculated.
     // <context.damager> returns the EntityTag damaging the other entity.
@@ -61,7 +61,6 @@ public class EntityKilledScriptEvent extends BukkitScriptEvent implements Listen
 
 
     public EntityTag entity;
-    public ElementTag cause;
     public ElementTag final_damage;
     public EntityTag damager;
     public EntityTag projectile;
@@ -77,11 +76,11 @@ public class EntityKilledScriptEvent extends BukkitScriptEvent implements Listen
         String target = cmd.equals("kills") ? arg2 : arg0;
         if (!attacker.isEmpty()) {
             if (damager != null) {
-                if (!cause.asString().equals(attacker) && (projectile == null || !projectile.tryAdvancedMatcher(attacker)) && (damager == null || !damager.tryAdvancedMatcher(attacker))) {
+                if (!runGenericCheck(attacker, event.getCause().name()) && (projectile == null || !projectile.tryAdvancedMatcher(attacker)) && (damager == null || !damager.tryAdvancedMatcher(attacker))) {
                     return false;
                 }
             }
-            else if (!cause.asString().equals(attacker)) {
+            else if (!runGenericCheck(attacker, event.getCause().name())) {
                 return false;
             }
         }
@@ -118,32 +117,21 @@ public class EntityKilledScriptEvent extends BukkitScriptEvent implements Listen
 
     @Override
     public ObjectTag getContext(String name) {
-        if (name.equals("entity")) {
-            return entity.getDenizenObject();
+        switch (name) {
+            case "entity": return entity.getDenizenEntity();
+            case "damage": return new ElementTag(event.getDamage());
+            case "final_damage": return final_damage;
+            case "cause": return new ElementTag(event.getCause());
+            case "damager": return damager != null ? damager.getDenizenObject() : null;
+            case "projectile": return  projectile != null ? projectile.getDenizenObject() : null;
+            case "damage_type_map":
+                MapTag map = new MapTag();
+                for (EntityDamageEvent.DamageModifier dm : EntityDamageEvent.DamageModifier.values()) {
+                    map.putObject(dm.name(), new ElementTag(event.getDamage(dm)));
+                }
+                return map;
         }
-        else if (name.equals("damage")) {
-            return new ElementTag(event.getDamage());
-        }
-        else if (name.equals("final_damage")) {
-            return final_damage;
-        }
-        else if (name.equals("cause")) {
-            return cause;
-        }
-        else if (name.equals("damager") && damager != null) {
-            return damager.getDenizenObject();
-        }
-        else if (name.equals("projectile") && projectile != null) {
-            return projectile.getDenizenObject();
-        }
-        else if (name.equals("damage_type_map")) {
-            MapTag map = new MapTag();
-            for (EntityDamageEvent.DamageModifier dm : EntityDamageEvent.DamageModifier.values()) {
-                map.putObject(dm.name(), new ElementTag(event.getDamage(dm)));
-            }
-            return map;
-        }
-        else if (name.startsWith("damage_")) {
+        if (name.startsWith("damage_")) {
             BukkitImplDeprecations.damageEventTypeMap.warn();
             for (EntityDamageEvent.DamageModifier dm : EntityDamageEvent.DamageModifier.values()) {
                 if (name.equals("damage_" + CoreUtilities.toLowerCase(dm.name()))) {
@@ -167,7 +155,6 @@ public class EntityKilledScriptEvent extends BukkitScriptEvent implements Listen
             return;
         }
         final_damage = new ElementTag(event.getFinalDamage());
-        cause = new ElementTag(CoreUtilities.toLowerCase(event.getCause().name()));
         damager = null;
         projectile = null;
         if (event instanceof EntityDamageByEntityEvent) {

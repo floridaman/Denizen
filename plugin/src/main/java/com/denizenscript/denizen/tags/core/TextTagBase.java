@@ -244,6 +244,7 @@ public class TextTagBase {
         // For example: - narrate "Reward: <&translate[item.minecraft.diamond_sword]>"
         // Be warned that language keys change between Minecraft versions.
         // Note that this is a magic Denizen tool - refer to <@link language Denizen Text Formatting>.
+        // You can use <@link tag ElementTag.strip_color> to convert the translated output to plain text (pre-translated).
         // -->
         TagManager.registerTagHandler(ElementTag.class, "&translate", (attribute) -> { // Cannot be static due to hacked sub-tag
             if (!attribute.hasParam()) {
@@ -321,6 +322,9 @@ public class TextTagBase {
             }
             else if (colorName.startsWith("co@") || colorName.lastIndexOf(',') > colorName.indexOf(',')) {
                 ColorTag color = ColorTag.valueOf(colorName, attribute.context);
+                if (color == null && TagManager.isStaticParsing) {
+                    return null;
+                }
                 String hex = Integer.toHexString(color.getColor().asRGB());
                 colorOut = FormattedTextHelper.stringifyRGBSpigot(hex);
             }

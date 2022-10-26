@@ -1,6 +1,7 @@
 package com.denizenscript.denizen.utilities;
 
 import com.denizenscript.denizen.Denizen;
+import com.denizenscript.denizen.objects.PolygonTag;
 import com.denizenscript.denizen.scripts.commands.entity.RemoveCommand;
 import com.denizenscript.denizen.tags.core.CustomColorTagBase;
 import com.denizenscript.denizen.utilities.flags.PlayerFlagHandler;
@@ -73,6 +74,7 @@ public class Settings {
             }
         }
         // Spigot
+        PolygonTag.preferInclusive = config.getBoolean("Tags.Polygon default inclusive", false);
         skipChunkFlagCleaning = config.getBoolean("Saves.Skip chunk flag cleaning", false);
         nullifySkullSkinIds = config.getBoolean("Tags.Nullify skull skin ids", false);
         cache_overrideHelp = config.getBoolean("Debug.Override help", true);
@@ -120,10 +122,10 @@ public class Settings {
         cache_commandScriptAutoInit = config.getBoolean("Scripts.Command.Auto init", false);
         PlayerFlagHandler.cacheTimeoutSeconds = config.getLong("Saves.Offline player cache timeout", 300);
         PlayerFlagHandler.asyncPreload = config.getBoolean("Saves.Load async on login", true);
+        PlayerFlagHandler.saveOnlyWhenWorldSaveOn = config.getBoolean("Saves.Only save if world save is on", false);
         RemoveCommand.alwaysWarnOnMassRemove = config.getBoolean("Commands.Remove.Always warn on mass delete", false);
         ConfigurationSection colorSection = config.getConfigurationSection("Colors");
         if (colorSection != null) {
-            CustomColorTagBase.customColorsRaw.clear();
             CustomColorTagBase.customColors.clear();
             CustomColorTagBase.defaultColor = null;
             for (String key : colorSection.getKeys(false)) {

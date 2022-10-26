@@ -27,6 +27,7 @@ import com.denizenscript.denizen.utilities.command.manager.messaging.Messaging;
 import com.denizenscript.denizen.utilities.debugging.BStatsMetricsLite;
 import com.denizenscript.denizen.utilities.debugging.DebugSubmit;
 import com.denizenscript.denizen.utilities.debugging.StatsRecord;
+import com.denizenscript.denizen.utilities.world.WorldListChangeTracker;
 import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizen.utilities.depends.Depends;
 import com.denizenscript.denizen.utilities.entity.DenizenEntityType;
@@ -53,6 +54,7 @@ import com.denizenscript.denizencore.scripts.commands.core.AdjustCommand;
 import com.denizenscript.denizencore.scripts.commands.queue.RunLaterCommand;
 import com.denizenscript.denizencore.utilities.CoreConfiguration;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
+import com.denizenscript.denizencore.utilities.debugging.DebugInternals;
 import com.denizenscript.denizencore.utilities.debugging.StrongWarning;
 import com.denizenscript.denizencore.utilities.text.ConfigUpdater;
 import org.bukkit.*;
@@ -131,6 +133,7 @@ public class Denizen extends JavaPlugin {
         if (!PlayerFlagHandler.dataFolder.exists()) {
             PlayerFlagHandler.dataFolder.mkdir();
         }
+        DebugInternals.alternateTrimLogic = FormattedTextHelper::bukkitSafeDebugTrimming;
         String javaVersion = System.getProperty("java.version");
         Debug.log("Running on java version: " + javaVersion);
         if (javaVersion.startsWith("8") || javaVersion.startsWith("1.8")) {
@@ -459,6 +462,7 @@ public class Denizen extends JavaPlugin {
                 }
             }
         }.runTaskTimer(this, 100, 20 * 60 * 5);
+        Bukkit.getPluginManager().registerEvents(new WorldListChangeTracker(), this);
     }
 
     public boolean hasDisabled = false;
