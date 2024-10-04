@@ -1,24 +1,28 @@
 package com.denizenscript.denizen.objects;
 
+import com.denizenscript.denizen.nms.NMSHandler;
+import com.denizenscript.denizen.nms.NMSVersion;
+import com.denizenscript.denizen.nms.interfaces.BlockHelper;
 import com.denizenscript.denizen.objects.properties.material.*;
+import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
 import com.denizenscript.denizen.utilities.VanillaTagHelper;
-import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizencore.DenizenCore;
 import com.denizenscript.denizencore.events.ScriptEvent;
 import com.denizenscript.denizencore.flags.AbstractFlagTracker;
 import com.denizenscript.denizencore.flags.FlaggableObject;
 import com.denizenscript.denizencore.flags.RedirectionFlagTracker;
 import com.denizenscript.denizencore.objects.*;
-import com.denizenscript.denizen.nms.NMSHandler;
 import com.denizenscript.denizencore.objects.core.DurationTag;
 import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.objects.core.ListTag;
+import com.denizenscript.denizencore.objects.core.MapTag;
 import com.denizenscript.denizencore.objects.properties.PropertyParser;
 import com.denizenscript.denizencore.tags.Attribute;
 import com.denizenscript.denizencore.tags.ObjectTagProcessor;
 import com.denizenscript.denizencore.tags.TagContext;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
-import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
+import com.denizenscript.denizencore.utilities.PropertyMatchHelper;
+import com.denizenscript.denizencore.utilities.debugging.Debug;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -254,7 +258,7 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
         // Nothing to do.
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         AbstractFlagTracker.registerFlagHandlers(tagProcessor);
         PropertyParser.registerPropertyTagHandlers(MaterialTag.class, tagProcessor);
@@ -313,7 +317,7 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
         });
         tagProcessor.registerTag(ElementTag.class, "is_switch", (attribute, object) -> {
             BukkitImplDeprecations.materialPropertyTags.warn(attribute.context);
-            return new ElementTag(MaterialSwitchFace.describes(object));
+            return new ElementTag(MaterialAttachmentFace.describes(object));
         });
         tagProcessor.registerTag(ElementTag.class, "is_waterloggable", (attribute, object) -> {
             BukkitImplDeprecations.materialPropertyTags.warn(attribute.context);
@@ -354,6 +358,18 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
         // -->
         tagProcessor.registerTag(ElementTag.class, "is_item", (attribute, object) -> {
             return new ElementTag(object.material.isItem());
+        });
+
+        // <--[tag]
+        // @attribute <MaterialTag.is_interactable>
+        // @returns ElementTag(Boolean)
+        // @description
+        // Returns whether the material can be interacted with.
+        // Some blocks such as piston heads and stairs are considered interactable.
+        // Note that this will return true if at least one state of a material has interaction handling.
+        // -->
+        tagProcessor.registerTag(ElementTag.class, "is_interactable", (attribute, object) -> {
+            return new ElementTag(object.material.isInteractable());
         });
 
         // <--[tag]
@@ -542,11 +558,27 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
         // Returns the material's piston reaction. (Only for block materials).
         // -->
         tagProcessor.registerTag(ElementTag.class, "piston_reaction", (attribute, object) -> {
-            String res = NMSHandler.blockHelper.getPushReaction(object.material);
-            if (res == null) {
-                return null;
+            return new ElementTag(NMSHandler.blockHelper.getPushReaction(object.material));
+        });
+
+        // <--[mechanism]
+        // @object MaterialTag
+        // @name piston_reaction
+        // @input ElementTag
+        // @description
+        // Sets the piston reaction for all blocks of this material type.
+        // Input may be: NORMAL (push and pull allowed), DESTROY (break when pushed), BLOCK (prevent a push or pull), IGNORE (don't use this), or PUSH_ONLY (push allowed but not pull)
+        // @tags
+        // <MaterialTag.piston_reaction>
+        // -->
+        tagProcessor.registerMechanism("piston_reaction", false, ElementTag.class, (object, mechanism, input) -> {
+            if (!mechanism.requireEnum(BlockHelper.PistonPushReaction.class)) {
+                return;
             }
-            return new ElementTag(res);
+            if (!object.getMaterial().isBlock()) {
+                mechanism.echoError("'piston_reaction' mechanism is only valid for block types.");
+            }
+            NMSHandler.blockHelper.setPushReaction(object.getMaterial(), input.asEnum(BlockHelper.PistonPushReaction.class));
         });
 
         // <--[tag]
@@ -578,7 +610,7 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
         // @returns ListTag
         // @mechanism MaterialTag.vanilla_tags
         // @description
-        // Returns a list of vanilla tags that apply to this material. See also <@link url https://minecraft.fandom.com/wiki/Tag>.
+        // Returns a list of vanilla tags that apply to this material. See also <@link url https://minecraft.wiki/w/Tag>.
         // -->
         tagProcessor.registerTag(ListTag.class, "vanilla_tags", (attribute, object) -> {
             HashSet<String> tags = VanillaTagHelper.tagsByMaterial.get(object.getMaterial());
@@ -592,13 +624,68 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
         // @attribute <MaterialTag.produced_instrument>
         // @returns ElementTag
         // @description
-        // Returns the name of the instrument that would be used by a note block placed above a block of this material.
+        // Returns the name of the instrument that would be used by a note block placed above or below (depending on the material type) a block of this material.
         // See list at <@link url https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Instrument.html>.
         // For the current instrument of a note block material refer to <@link tag MaterialTag.instrument>.
         // -->
         tagProcessor.registerTag(ElementTag.class, "produced_instrument", (attribute, object) -> {
             return new ElementTag(NMSHandler.blockHelper.getInstrumentFor(object.getMaterial()));
         });
+
+        // <--[tag]
+        // @attribute <MaterialTag.block_sound_data>
+        // @returns MapTag
+        // @description
+        // If the material is a block, returns the sound data for that block.
+        // The returned map has the following keys:
+        // volume, pitch: a decimal number
+        // break_sound, step_sound, place_sound, hit_sound, fall_sound: Bukkit name of the sound effect
+        // -->
+        tagProcessor.registerTag(MapTag.class, "block_sound_data", (attribute, object) -> {
+            if (!object.hasModernData()) {
+                attribute.echoError("Not a valid block.");
+                return null;
+            }
+            SoundGroup group = object.getModernData().getSoundGroup();
+            MapTag result = new MapTag();
+            result.putObject("volume", new ElementTag(group.getVolume()));
+            result.putObject("pitch", new ElementTag(group.getPitch()));
+            result.putObject("break_sound", new ElementTag(group.getBreakSound().name()));
+            result.putObject("step_sound", new ElementTag(group.getStepSound().name()));
+            result.putObject("place_sound", new ElementTag(group.getPlaceSound().name()));
+            result.putObject("hit_sound", new ElementTag(group.getHitSound().name()));
+            result.putObject("fall_sound", new ElementTag(group.getFallSound().name()));
+            return result;
+        });
+
+        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_20)) {
+
+            // <--[tag]
+            // @attribute <MaterialTag.food_points>
+            // @returns ElementTag(Number)
+            // @description
+            // If the material is an item, returns the amount of hunger it restores when eaten.
+            // See <@link url https://minecraft.wiki/w/Food> for more information on food mechanics.
+            // -->
+            tagProcessor.registerTag(ElementTag.class, "food_points", (attribute, object) -> {
+                Material itemType = object.getMaterial();
+                return itemType.isEdible() ? new ElementTag(NMSHandler.itemHelper.getFoodPoints(itemType)) : null;
+            });
+        }
+
+        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_19)) {
+
+            // <--[tag]
+            // @attribute <MaterialTag.is_enabled[<world>]>
+            // @returns ElementTag(Boolean)
+            // @description
+            // Returns whether the material is enabled in the specified world.
+            // If experimental features are disabled in the given world, and the MaterialTag is an item or block that is only enabled by experimental features, this will return false.
+            // -->
+            tagProcessor.registerTag(ElementTag.class, WorldTag.class, "is_enabled", (attribute, object, world) -> {
+                return new ElementTag(object.getMaterial().isEnabledByFeature(world.getWorld()));
+            });
+        }
     }
 
     public static ObjectTagProcessor<MaterialTag> tagProcessor = new ObjectTagProcessor<>();
@@ -649,6 +736,7 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
             NMSHandler.blockHelper.setVanillaTags(material, tags);
         }
 
+        // TODO: 1.20.6: need an ItemTag variant providing the proper functionality, and then deprecate this
         // <--[mechanism]
         // @object MaterialTag
         // @name max_stack_size
@@ -694,23 +782,6 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
                 Debug.echoError("'block_strength' mechanism is only valid for block types.");
             }
             NMSHandler.blockHelper.setBlockStrength(material, mechanism.getValue().asFloat());
-        }
-
-        // <--[mechanism]
-        // @object MaterialTag
-        // @name piston_reaction
-        // @input ElementTag
-        // @description
-        // Sets the piston reaction for all blocks of this material type.
-        // Input may be: NORMAL (push and pull allowed), DESTROY (break when pushed), BLOCK (prevent a push or pull), IGNORE (don't use this), or PUSH_ONLY (push allowed but not pull)
-        // @tags
-        // <MaterialTag.piston_reaction>
-        // -->
-        if (!mechanism.isProperty && mechanism.matches("piston_reaction")) {
-            if (!material.isBlock()) {
-                Debug.echoError("'piston_reaction' mechanism is only valid for block types.");
-            }
-            NMSHandler.blockHelper.setPushReaction(material, mechanism.getValue().asString().toUpperCase());
         }
 
         tagProcessor.processMechanism(this, mechanism);
@@ -763,7 +834,19 @@ public class MaterialTag implements ObjectTag, Adjustable, FlaggableObject {
     }
 
     @Override
-    public boolean advancedMatches(String matcher) {
-        return advancedMatchesInternal(getMaterial(), matcher, true);
+    public boolean advancedMatches(String matcher, TagContext context) {
+        if (advancedMatchesInternal(getMaterial(), matcher, true)) {
+            return true;
+        }
+        if (matcher.contains("[") && matcher.endsWith("]")) {
+            PropertyMatchHelper<MaterialTag> helper = PropertyMatchHelper.getPropertyMatchHelper(MaterialTag.class, matcher, (actual, compare) -> {
+                return actual.getMaterial() == compare.getMaterial();
+            });
+            if (helper == null) {
+                return false;
+            }
+            return helper.doesMatch(this);
+        }
+        return false;
     }
 }

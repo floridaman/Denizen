@@ -15,15 +15,13 @@ public class VillagerReplenishesTradeScriptEvent extends BukkitScriptEvent imple
     // @Events
     // villager replenishes trade
     //
-    // @Regex ^on villager replenishes trade$
-    //
     // @Group Entity
     //
     // @Location true
     //
     // @Cancellable true
     //
-    // @Triggers when a villager replenishes a trade.
+    // @Triggers when a villager replenishes a trade. A trade being "replenished" means its "uses" value is reset to "0".
     //
     // @Context
     // <context.entity> returns the EntityTag of the villager.
@@ -36,15 +34,11 @@ public class VillagerReplenishesTradeScriptEvent extends BukkitScriptEvent imple
     // -->
 
     public VillagerReplenishesTradeScriptEvent() {
+        registerCouldMatcher("villager replenishes trade");
     }
 
     public EntityTag entity;
     public VillagerReplenishTradeEvent event;
-
-    @Override
-    public boolean couldMatch(ScriptPath path) {
-        return path.eventLower.startsWith("villager replenishes trade");
-    }
 
     @Override
     public boolean matches(ScriptPath path) {
@@ -61,8 +55,8 @@ public class VillagerReplenishesTradeScriptEvent extends BukkitScriptEvent imple
             event.setRecipe(determinationObj.asType(TradeTag.class, getTagContext(path)).getRecipe());
             return true;
         }
-        else if (determinationObj instanceof ElementTag && ((ElementTag) determinationObj).isInt()) {
-            event.setBonus(((ElementTag) determinationObj).asInt());
+        else if (determinationObj instanceof ElementTag element && element.isInt()) {
+            event.setBonus(element.asInt());
             return true;
         }
         return super.applyDetermination(path, determinationObj);
@@ -71,12 +65,9 @@ public class VillagerReplenishesTradeScriptEvent extends BukkitScriptEvent imple
     @Override
     public ObjectTag getContext(String name) {
         switch (name) {
-            case "entity":
-                return entity;
-            case "trade":
-                return new TradeTag(event.getRecipe()).duplicate();
-            case "bonus":
-                return new ElementTag(event.getBonus());
+            case "entity": return entity;
+            case "trade": return new TradeTag(event.getRecipe()).duplicate();
+            case "bonus": return new ElementTag(event.getBonus());
         }
         return super.getContext(name);
     }

@@ -44,7 +44,6 @@ public class PlayerSteersEntityScriptEvent extends BukkitScriptEvent {
     }
 
     public static PlayerSteersEntityScriptEvent instance;
-    public boolean enabled;
     public EntityTag entity;
     public PlayerTag player;
     public ElementTag sideways;
@@ -73,7 +72,7 @@ public class PlayerSteersEntityScriptEvent extends BukkitScriptEvent {
     @Override
     public boolean matches(ScriptPath path) {
         String entityName = path.eventArgLowerAt(2);
-        if (!entity.tryAdvancedMatcher(entityName)) {
+        if (!entity.tryAdvancedMatcher(entityName, path.context)) {
             return false;
         }
         if (!runInCheck(path, entity.getLocation())) {
@@ -85,12 +84,7 @@ public class PlayerSteersEntityScriptEvent extends BukkitScriptEvent {
     @Override
     public void init() {
         NetworkInterceptHelper.enable();
-        enabled = true;
-    }
-
-    @Override
-    public void destroy() {
-        enabled = false;
+        super.init();
     }
 
     @Override

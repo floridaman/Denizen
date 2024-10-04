@@ -30,13 +30,13 @@ public class MaterialBrewingStand implements Property {
             "bottles"
     };
 
-    private MaterialBrewingStand(MaterialTag _material) {
+    public MaterialBrewingStand(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.bottles>

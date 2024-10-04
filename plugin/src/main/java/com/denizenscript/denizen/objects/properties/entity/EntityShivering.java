@@ -28,13 +28,13 @@ public class EntityShivering implements Property {
             "shivering"
     };
 
-    private EntityShivering(EntityTag _entity) {
+    public EntityShivering(EntityTag _entity) {
         entity = _entity;
     }
 
     EntityTag entity;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.shivering>

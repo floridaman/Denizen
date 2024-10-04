@@ -28,13 +28,13 @@ public class EntityCarryingEgg implements Property {
             "carrying_egg"
     };
 
-    private EntityCarryingEgg(EntityTag _entity) {
+    public EntityCarryingEgg(EntityTag _entity) {
         entity = _entity;
     }
 
     EntityTag entity;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.carrying_egg>
@@ -68,6 +68,7 @@ public class EntityCarryingEgg implements Property {
         // @name carrying_egg
         // @input ElementTag(Boolean)
         // @Plugin Paper
+        // @group properties
         // @description
         // If the entity is a turtle, sets whether it is carrying an egg.
         // @tags

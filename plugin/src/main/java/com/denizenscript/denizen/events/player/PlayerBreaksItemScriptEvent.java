@@ -60,7 +60,7 @@ public class PlayerBreaksItemScriptEvent extends BukkitScriptEvent implements Li
 
     @Override
     public boolean matches(ScriptPath path) {
-        if (!item.tryAdvancedMatcher(path.eventArgLowerAt(3))) {
+        if (!path.tryArgObject(3, item)) {
             return false;
         }
         if (!runInCheck(path, event.getPlayer().getLocation())) {
@@ -108,7 +108,6 @@ public class PlayerBreaksItemScriptEvent extends BukkitScriptEvent implements Li
         }
         item = new ItemTag(event.getBrokenItem());
         this.event = event;
-        cancelled = false;
         fire(event);
     }
 }

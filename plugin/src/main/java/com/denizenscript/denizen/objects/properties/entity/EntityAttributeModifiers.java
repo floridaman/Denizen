@@ -1,6 +1,9 @@
 package com.denizenscript.denizen.objects.properties.entity;
 
+import com.denizenscript.denizen.nms.NMSHandler;
+import com.denizenscript.denizen.nms.NMSVersion;
 import com.denizenscript.denizen.objects.EntityTag;
+import com.denizenscript.denizen.objects.properties.item.ItemAttributeModifiers;
 import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizencore.objects.Mechanism;
 import com.denizenscript.denizencore.objects.ObjectTag;
@@ -9,7 +12,7 @@ import com.denizenscript.denizencore.objects.core.ListTag;
 import com.denizenscript.denizencore.objects.core.MapTag;
 import com.denizenscript.denizencore.objects.properties.Property;
 import com.denizenscript.denizencore.objects.properties.PropertyParser;
-import com.denizenscript.denizencore.tags.core.EscapeTagBase;
+import com.denizenscript.denizencore.tags.core.EscapeTagUtil;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
 import com.denizenscript.denizencore.utilities.text.StringHolder;
@@ -44,7 +47,7 @@ public class EntityAttributeModifiers implements Property {
             "attributes", "attribute_modifiers", "add_attribute_modifiers", "remove_attribute_modifiers"
     };
 
-    private EntityAttributeModifiers(EntityTag entity) {
+    public EntityAttributeModifiers(EntityTag entity) {
         this.entity = entity;
     }
 
@@ -52,7 +55,7 @@ public class EntityAttributeModifiers implements Property {
 
     @Deprecated
     public static String stringify(AttributeModifier modifier) {
-        return EscapeTagBase.escape(modifier.getName()) + "/" + modifier.getAmount() + "/" + modifier.getOperation().name()
+        return EscapeTagUtil.escape(modifier.getName()) + "/" + modifier.getAmount() + "/" + modifier.getOperation().name()
                 + "/" + (modifier.getSlot() == null ? "any" : modifier.getSlot().name());
     }
 
@@ -68,7 +71,7 @@ public class EntityAttributeModifiers implements Property {
             for (AttributeModifier modifier : instance.getModifiers()) {
                 modifiers.append("/").append(stringify(modifier));
             }
-            list.add(EscapeTagBase.escape(attribute.name()) + "/" + instance.getBaseValue() + modifiers);
+            list.add(EscapeTagUtil.escape(attribute.name()) + "/" + instance.getBaseValue() + modifiers);
         }
         return list;
     }
@@ -79,7 +82,9 @@ public class EntityAttributeModifiers implements Property {
         result.putObject("amount", new ElementTag(modifier.getAmount()));
         result.putObject("operation", new ElementTag(modifier.getOperation()));
         result.putObject("slot", new ElementTag(modifier.getSlot() == null ? "any" : modifier.getSlot().name()));
-        result.putObject("id", new ElementTag(modifier.getUniqueId().toString()));
+        if (NMSHandler.getVersion().isAtMost(NMSVersion.v1_20)) {
+            result.putObject("id", new ElementTag(modifier.getUniqueId().toString()));
+        }
         return result;
     }
 
@@ -88,6 +93,7 @@ public class EntityAttributeModifiers implements Property {
         ElementTag amount = map.getElement("amount");
         ElementTag operation = map.getElement("operation");
         ElementTag slot = map.getElement("slot", "any");
+        // TODO: MC 1.21: ID and name are now the same internal value.
         ElementTag id = map.getElement("id");
         UUID idValue;
         double amountValue;
@@ -146,7 +152,7 @@ public class EntityAttributeModifiers implements Property {
     @Override
     public String getPropertyString() {
         MapTag map = getAttributeModifiers();
-        return map.map.isEmpty() ? null : map.savable();
+        return map.isEmpty() ? null : map.savable();
     }
 
     @Override
@@ -195,7 +201,7 @@ public class EntityAttributeModifiers implements Property {
     // - determine <[y]>
     // </code>
     //
-    // See also <@link url https://minecraft.fandom.com/wiki/Attribute#Modifiers>
+    // See also <@link url https://minecraft.wiki/w/Attribute#Modifiers>
     //
     // For a quick and dirty in-line input, you can do for example: [generic_max_health=<list[<map[operation=ADD_NUMBER;amount=20;slot=HEAD]>]>]
     //
@@ -214,7 +220,7 @@ public class EntityAttributeModifiers implements Property {
     //
     // -->
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.attribute_modifiers>
@@ -259,7 +265,7 @@ public class EntityAttributeModifiers implements Property {
             try {
                 MapTag input = mechanism.valueAsType(MapTag.class);
                 Attributable ent = getAttributable();
-                for (Map.Entry<StringHolder, ObjectTag> subValue : input.map.entrySet()) {
+                for (Map.Entry<StringHolder, ObjectTag> subValue : input.entrySet()) {
                     Attribute attr = Attribute.valueOf(subValue.getKey().str.toUpperCase());
                     AttributeInstance instance = ent.getAttribute(attr);
                     if (instance == null) {
@@ -297,7 +303,7 @@ public class EntityAttributeModifiers implements Property {
             try {
                 MapTag input = mechanism.valueAsType(MapTag.class);
                 Attributable ent = getAttributable();
-                for (Map.Entry<StringHolder, ObjectTag> subValue : input.map.entrySet()) {
+                for (Map.Entry<StringHolder, ObjectTag> subValue : input.entrySet()) {
                     Attribute attr = Attribute.valueOf(subValue.getKey().str.toUpperCase());
                     AttributeInstance instance = ent.getAttribute(attr);
                     if (instance == null) {
@@ -305,7 +311,18 @@ public class EntityAttributeModifiers implements Property {
                         continue;
                     }
                     for (ObjectTag listValue : CoreUtilities.objectToList(subValue.getValue(), mechanism.context)) {
-                        instance.addModifier(modiferForMap(attr, listValue.asType(MapTag.class, mechanism.context)));
+                        AttributeModifier modifier = modiferForMap(attr, listValue.asType(MapTag.class, mechanism.context));
+                        try {
+                            instance.addModifier(modifier);
+                        }
+                        catch (IllegalArgumentException ex) {
+                            if (NMSHandler.getVersion().isAtMost(NMSVersion.v1_20) && ex.getMessage().equals("Modifier is already applied on this attribute!")) {
+                                Debug.echoError("Cannot add attribute with ID '" + modifier.getUniqueId() + "' as the entity already has a modifier with the same ID.");
+                            }
+                            else {
+                                throw ex;
+                            }
+                        }
                     }
                 }
             }
@@ -346,14 +363,13 @@ public class EntityAttributeModifiers implements Property {
                 }
             }
             for (String toRemove : inputList) {
-                UUID id = UUID.fromString(toRemove);
                 for (Attribute attr : Attribute.values()) {
                     AttributeInstance instance = ent.getAttribute(attr);
                     if (instance == null) {
                         continue;
                     }
                     for (AttributeModifier modifer : instance.getModifiers()) {
-                        if (modifer.getUniqueId().equals(id)) {
+                        if (ItemAttributeModifiers.getIdString(modifer).equals(toRemove)) {
                             instance.removeModifier(modifer);
                             break;
                         }
@@ -368,7 +384,7 @@ public class EntityAttributeModifiers implements Property {
             ListTag list = mechanism.valueAsType(ListTag.class);
             for (String str : list) {
                 List<String> subList = CoreUtilities.split(str, '/');
-                Attribute attr = Attribute.valueOf(EscapeTagBase.unEscape(subList.get(0)).toUpperCase());
+                Attribute attr = Attribute.valueOf(EscapeTagUtil.unEscape(subList.get(0)).toUpperCase());
                 AttributeInstance instance = ent.getAttribute(attr);
                 if (instance == null) {
                     mechanism.echoError("Attribute " + attr.name() + " is not applicable to entity of type " + entity.getBukkitEntityType().name());
@@ -380,7 +396,7 @@ public class EntityAttributeModifiers implements Property {
                 }
                 for (int x = 2; x < subList.size(); x += 4) {
                     String slot = subList.get(x + 3).toUpperCase();
-                    AttributeModifier modifier = new AttributeModifier(UUID.randomUUID(), EscapeTagBase.unEscape(subList.get(x)),
+                    AttributeModifier modifier = new AttributeModifier(UUID.randomUUID(), EscapeTagUtil.unEscape(subList.get(x)),
                             Double.parseDouble(subList.get(x + 1)), AttributeModifier.Operation.valueOf(subList.get(x + 2).toUpperCase()),
                                     slot.equals("ANY") ? null : EquipmentSlot.valueOf(slot));
                     instance.addModifier(modifier);

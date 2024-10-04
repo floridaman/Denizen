@@ -63,14 +63,14 @@ public class BlockDropsItemScriptEvent extends BukkitScriptEvent implements List
 
     @Override
     public boolean matches(ScriptPath path) {
-        if (!material.tryAdvancedMatcher(path.eventArgLowerAt(0))) {
+        if (!path.tryArgObject(0, material)) {
             return false;
         }
         String item = path.eventArgLowerAt(2);
         if (!item.equals("item")) {
             boolean anyMatch = false;
             for (Item itemEnt : event.getItems()) {
-                if (new ItemTag(itemEnt.getItemStack()).tryAdvancedMatcher(item)) {
+                if (new ItemTag(itemEnt.getItemStack()).tryAdvancedMatcher(item, path.context)) {
                     anyMatch = true;
                     break;
                 }

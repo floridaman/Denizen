@@ -1,82 +1,26 @@
 package com.denizenscript.denizen.tags.core;
 
-import com.denizenscript.denizen.objects.ColorTag;
 import com.denizenscript.denizen.objects.properties.bukkit.BukkitElementExtensions;
+import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
 import com.denizenscript.denizen.utilities.FormattedTextHelper;
+import com.denizenscript.denizencore.objects.ObjectTag;
+import com.denizenscript.denizencore.objects.core.ColorTag;
 import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.objects.core.ListTag;
 import com.denizenscript.denizencore.objects.core.MapTag;
-import com.denizenscript.denizencore.tags.TagRunnable;
-import com.denizenscript.denizencore.tags.Attribute;
-import com.denizenscript.denizencore.tags.ReplaceableTagEvent;
 import com.denizenscript.denizencore.tags.TagManager;
-import com.denizenscript.denizencore.tags.core.EscapeTagBase;
+import com.denizenscript.denizencore.tags.core.EscapeTagUtil;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
-import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
 import org.bukkit.ChatColor;
 
 public class TextTagBase {
 
     public TextTagBase() {
-        TagManager.registerTagHandler(new TagRunnable.RootForm() {
-            @Override
-            public void run(ReplaceableTagEvent event) {
-                String lower = CoreUtilities.toLowerCase(event.getName());
-                Attribute attribute = event.getAttributes();
-                if (event.getName().equals("&auml")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("ä").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (event.getName().equals("&Auml")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("Ä").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (event.getName().equals("&ouml")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("ö").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (event.getName().equals("&Ouml")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("Ö").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (event.getName().equals("&uuml")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("ü").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (event.getName().equals("&Uuml")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("Ü").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (lower.equals("&amp")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("&").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (lower.equals("&cm")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag(",").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (lower.equals("&sc")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag(";").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (lower.equals("&pipe")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("|").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (lower.equals("&ds")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("$").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (lower.equals("&dot")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag(".").getObjectAttribute(attribute.fulfill(1)));
-                }
-                else if (lower.equals("&hrt")) {
-                    BukkitImplDeprecations.pointlessTextTags.warn(event.getScriptEntry());
-                    event.setReplacedObject(new ElementTag("\u2665").getObjectAttribute(attribute.fulfill(1)));
-                }
-            }
-        }, "&auml", "&Auml", "&ouml", "&Ouml", "&uuml", "&Uuml", "&amp", "&cm", "&sc", "&pipe", "&ds", "&at", "&dot", "&hrt");
+        TagManager.registerStaticTagBaseHandler(ElementTag.class, "&amp", (attribute) -> { BukkitImplDeprecations.pointlessTextTags.warn(attribute.context); return new ElementTag("&"); });
+        TagManager.registerStaticTagBaseHandler(ElementTag.class, "&cm", (attribute) -> { BukkitImplDeprecations.pointlessTextTags.warn(attribute.context); return new ElementTag(","); });
+        TagManager.registerStaticTagBaseHandler(ElementTag.class, "&sc", (attribute) -> { BukkitImplDeprecations.pointlessTextTags.warn(attribute.context); return new ElementTag(";"); });
+        TagManager.registerStaticTagBaseHandler(ElementTag.class, "&pipe", (attribute) -> { BukkitImplDeprecations.pointlessTextTags.warn(attribute.context); return new ElementTag("|"); });
+        TagManager.registerStaticTagBaseHandler(ElementTag.class, "&dot", (attribute) -> { BukkitImplDeprecations.pointlessTextTags.warn(attribute.context); return new ElementTag("."); });
 
         // <--[tag]
         // @attribute <p>
@@ -237,41 +181,46 @@ public class TextTagBase {
         });
 
         // <--[tag]
-        // @attribute <&translate[<key>]>
+        // @attribute <&translate[key=<key>;(fallback=<fallback>);(with=<text>|...)]>
         // @returns ElementTag
         // @description
-        // Returns a special chat code that displays an autotranslated message.
-        // For example: - narrate "Reward: <&translate[item.minecraft.diamond_sword]>"
-        // Be warned that language keys change between Minecraft versions.
+        // Returns a special chat code that is read by the client to display an auto-translated message.
+        // "key" is the translation key.
+        // Optionally specify "fallback" as text to display when the client can't find a translation for the key.
+        // Optionally specify "with" as a list of input data for the translatable message (parts of the message that are dynamic).
+        // Be warned that language keys can change between Minecraft versions.
         // Note that this is a magic Denizen tool - refer to <@link language Denizen Text Formatting>.
         // You can use <@link tag ElementTag.strip_color> to convert the translated output to plain text (pre-translated).
+        // @example
+        // Narrates a translatable of a diamond sword's name.
+        // - narrate "Reward: <&translate[key=item.minecraft.diamond_sword]>"
+        // @example
+        // Narrates a translatable with some input data.
+        // - narrate <&translate[key=commands.give.success.single;with=32|<&translate[key=item.minecraft.diamond_sword]>|<player.name>]>
+        // @example
+        // Narrates a custom translatable (from something like a resource pack), with a fallback in case it can't be translated.
+        // - narrate <&translate[key=my.custom.translation;fallback=Please use the resource pack!]>
         // -->
-        TagManager.registerTagHandler(ElementTag.class, "&translate", (attribute) -> { // Cannot be static due to hacked sub-tag
-            if (!attribute.hasParam()) {
-                return null;
-            }
-            String translateText = attribute.getParam();
+        TagManager.registerTagHandler(ElementTag.class, ObjectTag.class, "&translate", (attribute, param) -> { // Cannot be static due to hacked sub-tag
+            MapTag translateMap = param.asType(MapTag.class, CoreUtilities.noDebugContext);
+            if (translateMap == null) {
+                BukkitImplDeprecations.translateLegacySyntax.warn(attribute.context);
+                translateMap = new MapTag();
+                translateMap.putObject("key", param);
 
-            // <--[tag]
-            // @attribute <&translate[<key>].with[<text>|...]>
-            // @returns ElementTag
-            // @description
-            // Returns a special chat code that displays an autotranslated message.
-            // Optionally, specify a list of escaped text values representing input data for the translatable message.
-            // Be aware that missing 'with' values will cause exceptions in your console.
-            // For example: - narrate "<&translate[commands.give.success.single].with[32|<&translate[item.minecraft.diamond_sword].escaped>|<player.name.escaped>]>"
-            // Be warned that language keys change between Minecraft versions.
-            // Note that this is a magic Denizen tool - refer to <@link language Denizen Text Formatting>.
-            // -->
-            StringBuilder with = new StringBuilder();
-            if (attribute.startsWith("with", 2)) {
-                ListTag withList = attribute.contextAsType(2, ListTag.class);
-                attribute.fulfill(1);
-                for (String str : withList) {
-                    with.append(";").append(FormattedTextHelper.escape(EscapeTagBase.unEscape(str)));
+                // <--[tag]
+                // @attribute <&translate[<key>].with[<text>|...]>
+                // @returns ElementTag
+                // @deprecated Use '<&translate[key=<key>;with=<text>|...]>'.
+                // @description
+                // Deprecated in favor of <@link tag &translate>.
+                // -->
+                if (attribute.startsWith("with", 2)) {
+                    translateMap.putObject("with", new ListTag(attribute.contextAsType(2, ListTag.class), with -> new ElementTag(EscapeTagUtil.unEscape(with), true)));
+                    attribute.fulfill(1);
                 }
             }
-            return new ElementTag(ChatColor.COLOR_CHAR + "[translate=" + FormattedTextHelper.escape(translateText) + with + "]");
+            return new ElementTag(ChatColor.COLOR_CHAR + "[translate=" + FormattedTextHelper.escape(translateMap.savable()) + ']', true);
         });
 
         // <--[tag]
@@ -291,9 +240,9 @@ public class TextTagBase {
             if (scoreList.size() < 2) {
                 return null;
             }
-            String name = FormattedTextHelper.escape(EscapeTagBase.unEscape(scoreList.get(0)));
-            String objective = FormattedTextHelper.escape(EscapeTagBase.unEscape(scoreList.get(1)));
-            String value = scoreList.size() >= 3 ? FormattedTextHelper.escape(EscapeTagBase.unEscape(scoreList.get(2))) : "";
+            String name = FormattedTextHelper.escape(EscapeTagUtil.unEscape(scoreList.get(0)));
+            String objective = FormattedTextHelper.escape(EscapeTagUtil.unEscape(scoreList.get(1)));
+            String value = scoreList.size() >= 3 ? FormattedTextHelper.escape(EscapeTagUtil.unEscape(scoreList.get(2))) : "";
             return new ElementTag(ChatColor.COLOR_CHAR + "[score=" + name + ";" + objective + ";" + value + "]");
         });
 
@@ -325,7 +274,7 @@ public class TextTagBase {
                 if (color == null && TagManager.isStaticParsing) {
                     return null;
                 }
-                String hex = Integer.toHexString(color.getColor().asRGB());
+                String hex = Integer.toHexString(color.asRGB());
                 colorOut = FormattedTextHelper.stringifyRGBSpigot(hex);
             }
             if (colorOut == null) {
@@ -379,6 +328,20 @@ public class TextTagBase {
                 return null;
             }
             return new ElementTag(ChatColor.COLOR_CHAR + "[font=" + attribute.getParam() + "]");
+        });
+
+        // <--[tag]
+        // @attribute <&optimize>
+        // @returns ElementTag
+        // @description
+        // Returns a chat code that tells the formatted text parser to try to produce mininalist JSON text.
+        // This is useful in particular for very long text or where text is being sent rapidly/repeatedly.
+        // It is not needed in most normal messages.
+        // It will produce incompatibility issues if used in items or other locations where raw JSON matching is required.
+        // Note that this is a magic Denizen tool - refer to <@link language Denizen Text Formatting>.
+        // -->
+        TagManager.registerStaticTagBaseHandler(ElementTag.class, "&optimize", (attribute) -> {
+            return new ElementTag(ChatColor.COLOR_CHAR + "[optimize=true]", true);
         });
 
         // <--[tag]

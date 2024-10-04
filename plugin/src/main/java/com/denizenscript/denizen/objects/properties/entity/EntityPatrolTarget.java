@@ -28,7 +28,7 @@ public class EntityPatrolTarget implements Property {
             "patrol_target"
     };
 
-    private EntityPatrolTarget(EntityTag entity) {
+    public EntityPatrolTarget(EntityTag entity) {
         this.entity = entity;
     }
 
@@ -48,7 +48,7 @@ public class EntityPatrolTarget implements Property {
         return "patrol_target";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.patrol_target>

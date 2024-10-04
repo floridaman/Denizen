@@ -43,13 +43,13 @@ public class MaterialHalf implements Property {
             "half"
     };
 
-    private MaterialHalf(MaterialTag _material) {
+    public MaterialHalf(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.half>

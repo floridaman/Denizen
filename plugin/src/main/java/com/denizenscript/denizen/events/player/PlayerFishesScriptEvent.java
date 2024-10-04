@@ -10,7 +10,6 @@ import com.denizenscript.denizencore.scripts.ScriptEntryData;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -42,8 +41,8 @@ public class PlayerFishesScriptEvent extends BukkitScriptEvent implements Listen
     // <context.xp> returns the amount of experience that will drop.
     //
     // @Determine
-    // "CAUGHT:" + ItemTag to change the item that was caught (only if an item was already being caught).
-    // "XP:" + ElementTag(Number) to change how much experience will drop.
+    // "CAUGHT:<ItemTag>" to change the item that was caught (only if an item was already being caught).
+    // "XP:<ElementTag(Number)>" to change how much experience will drop.
     //
     // @Player If the fisher or the caught entity is a player (in most cases, the fisher can be assumed to be a real player).
     // @NPC If the fisher or the caught entity is an NPC.
@@ -69,11 +68,11 @@ public class PlayerFishesScriptEvent extends BukkitScriptEvent implements Listen
             if (entity == null) {
                 return false;
             }
-            if (!entity.tryAdvancedMatcher(fish)) {
+            if (!entity.tryAdvancedMatcher(fish, path.context)) {
                 if (item == null) {
                     return false;
                 }
-                if (!item.tryAdvancedMatcher(fish)) {
+                if (!item.tryAdvancedMatcher(fish, path.context)) {
                     return false;
                 }
             }
@@ -109,8 +108,8 @@ public class PlayerFishesScriptEvent extends BukkitScriptEvent implements Listen
             String determinationLower = CoreUtilities.toLowerCase(determination);
             if (determinationLower.startsWith("caught:")) {
                 item = ItemTag.valueOf(determination.substring("caught:".length()), getTagContext(path));
-                if (entity != null && entity.getBukkitEntityType() == EntityType.DROPPED_ITEM) {
-                    ((Item) entity.getBukkitEntity()).setItemStack(item.getItemStack());
+                if (entity != null && entity.getBukkitEntity() instanceof Item itemEnt) {
+                    itemEnt.setItemStack(item.getItemStack());
                     return true;
                 }
             }

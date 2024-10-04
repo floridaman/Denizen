@@ -1,13 +1,12 @@
 package com.denizenscript.denizen.events.entity;
 
+import com.denizenscript.denizen.events.BukkitScriptEvent;
 import com.denizenscript.denizen.objects.EntityTag;
 import com.denizenscript.denizen.objects.LocationTag;
 import com.denizenscript.denizen.utilities.implementation.BukkitScriptEntryData;
-import com.denizenscript.denizen.events.BukkitScriptEvent;
-import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.objects.ObjectTag;
+import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.scripts.ScriptEntryData;
-import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
@@ -67,10 +66,10 @@ public class EntityBreaksHangingScriptEvent extends BukkitScriptEvent implements
     public boolean matches(ScriptPath path) {
         String entName = path.eventArgLowerAt(0);
         String hang = path.eventArgLowerAt(2);
-        if (!breaker.tryAdvancedMatcher(entName)) {
+        if (!breaker.tryAdvancedMatcher(entName, path.context)) {
             return false;
         }
-        if (!hang.equals("hanging") && !hanging.tryAdvancedMatcher(hang)) {
+        if (!hang.equals("hanging") && !hanging.tryAdvancedMatcher(hang, path.context)) {
             return false;
         }
         if (!runInCheck(path, location)) {
@@ -92,9 +91,6 @@ public class EntityBreaksHangingScriptEvent extends BukkitScriptEvent implements
         switch (name) {
             case "cause":
                 return cause;
-            case "entity":
-                BukkitImplDeprecations.entityBreaksHangingEventContext.warn();
-                return breaker;
             case "breaker":
                 return breaker;
             case "hanging":

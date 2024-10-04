@@ -52,9 +52,12 @@ public class AnimateCommand extends AbstractCommand {
     // POLAR_BEAR_START_STANDING, POLAR_BEAR_STOP_STANDING,
     // HORSE_BUCK, HORSE_START_STANDING, HORSE_STOP_STANDING,
     // IRON_GOLEM_ATTACK,
-    // VILLAGER_SHAKE_HEAD
+    // VILLAGER_SHAKE_HEAD,
+    // SWING_MAIN_HAND, SWING_OFF_HAND
     //
     // Note that the above list only applies where logical, EG 'WOLF_' animations only apply to wolves.
+    //
+    // In versions 1.20+, to specify the direction of damage for the HURT animation, use <@link mechanism EntityTag.play_hurt_animation>
     //
     // @Tags
     // None
@@ -131,7 +134,7 @@ public class AnimateCommand extends AbstractCommand {
                     else if (effect != null) {
                         if (forPlayers != null) {
                             for (PlayerTag player : forPlayers) {
-                                NMSHandler.packetHelper.sendEntityEffect(player.getPlayerEntity(), entity.getBukkitEntity(), effect.getData());
+                                NMSHandler.packetHelper.sendEntityEffect(player.getPlayerEntity(), entity.getBukkitEntity(), effect);
                             }
                         }
                         else {

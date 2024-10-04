@@ -53,10 +53,10 @@ public class BlockBuiltScriptEvent extends BukkitScriptEvent implements Listener
             return false;
         }
         String mat2 = path.eventArgLowerAt(4);
-        if (mat2.length() > 0 && !old_material.tryAdvancedMatcher(mat2)) {
+        if (mat2.length() > 0 && !old_material.tryAdvancedMatcher(mat2, path.context)) {
             return false;
         }
-        if (!new_material.tryAdvancedMatcher(path.eventArgLowerAt(0))) {
+        if (!path.tryArgObject(0, new_material)) {
             return false;
         }
         return super.matches(path);

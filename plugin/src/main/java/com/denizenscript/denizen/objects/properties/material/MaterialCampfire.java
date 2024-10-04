@@ -31,13 +31,13 @@ public class MaterialCampfire implements Property {
             "signal_fire"
     };
 
-    private MaterialCampfire(MaterialTag _material) {
+    public MaterialCampfire(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
         PropertyParser.registerTag(MaterialCampfire.class, ElementTag.class, "signal_fire", (attribute, material) -> {
             BukkitImplDeprecations.materialCampfire.warn(attribute.context);
             return new ElementTag(material.getCampfire().isSignalFire());

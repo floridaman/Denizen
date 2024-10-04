@@ -1,11 +1,15 @@
 package com.denizenscript.denizen.nms.v1_17.helpers;
 
+import com.denizenscript.denizen.nms.interfaces.ItemHelper;
+import com.denizenscript.denizen.nms.util.PlayerProfile;
+import com.denizenscript.denizen.nms.util.jnbt.CompoundTag;
+import com.denizenscript.denizen.nms.util.jnbt.IntArrayTag;
+import com.denizenscript.denizen.nms.util.jnbt.Tag;
 import com.denizenscript.denizen.nms.v1_17.ReflectionMappingsInfo;
+import com.denizenscript.denizen.nms.v1_17.impl.jnbt.CompoundTagImpl;
 import com.denizenscript.denizen.objects.ItemTag;
 import com.denizenscript.denizen.utilities.FormattedTextHelper;
 import com.denizenscript.denizencore.utilities.ReflectionHelper;
-import com.denizenscript.denizen.nms.util.jnbt.*;
-import com.denizenscript.denizen.nms.v1_17.impl.jnbt.CompoundTagImpl;
 import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultiset;
@@ -13,8 +17,6 @@ import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
-import com.denizenscript.denizen.nms.interfaces.ItemHelper;
-import com.denizenscript.denizen.nms.util.PlayerProfile;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.chat.ComponentSerializer;
@@ -46,10 +48,10 @@ import org.bukkit.craftbukkit.v1_17_R1.inventory.CraftInventoryPlayer;
 import org.bukkit.craftbukkit.v1_17_R1.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.v1_17_R1.util.CraftMagicNumbers;
 import org.bukkit.craftbukkit.v1_17_R1.util.CraftNamespacedKey;
-import org.bukkit.inventory.RecipeChoice;
-import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.RecipeChoice;
+import org.bukkit.inventory.ShapedRecipe;
 
 import java.util.*;
 
@@ -82,25 +84,6 @@ public class ItemHelperImpl extends ItemHelper {
     }
 
     @Override
-    public void removeRecipe(NamespacedKey key) {
-        ResourceLocation nmsKey = CraftNamespacedKey.toMinecraft(key);
-        for (Object2ObjectLinkedOpenHashMap<ResourceLocation, net.minecraft.world.item.crafting.Recipe<?>> recipeMap : ((CraftServer) Bukkit.getServer()).getServer().getRecipeManager().recipes.values()) {
-            recipeMap.remove(nmsKey);
-        }
-    }
-
-    @Override
-    public void clearDenizenRecipes() {
-        for (Object2ObjectLinkedOpenHashMap<ResourceLocation, net.minecraft.world.item.crafting.Recipe<?>> recipeMap : ((CraftServer) Bukkit.getServer()).getServer().getRecipeManager().recipes.values()) {
-            for (ResourceLocation key : new ArrayList<>(recipeMap.keySet())) {
-                if (key.getNamespace().equalsIgnoreCase("denizen")) {
-                    recipeMap.remove(key);
-                }
-            }
-        }
-    }
-
-    @Override
     public void setShapedRecipeIngredient(ShapedRecipe recipe, char c, ItemStack[] item, boolean exact) {
         if (item.length == 1 && item[0].getType() == Material.AIR) {
             recipe.setIngredient(c, new RecipeChoice.MaterialChoice(Material.AIR));
@@ -128,7 +111,7 @@ public class ItemHelperImpl extends ItemHelper {
     }
 
     @Override
-    public void registerFurnaceRecipe(String keyName, String group, ItemStack result, ItemStack[] ingredient, float exp, int time, String type, boolean exact) {
+    public void registerFurnaceRecipe(String keyName, String group, ItemStack result, ItemStack[] ingredient, float exp, int time, String type, boolean exact, String category) {
         ResourceLocation key = new ResourceLocation("denizen", keyName);
         Ingredient itemRecipe = itemArrayToRecipe(ingredient, exact);
         AbstractCookingRecipe recipe;
@@ -156,7 +139,7 @@ public class ItemHelperImpl extends ItemHelper {
     }
 
     @Override
-    public void registerSmithingRecipe(String keyName, ItemStack result, ItemStack[] baseItem, boolean baseExact, ItemStack[] upgradeItem, boolean upgradeExact) {
+    public void registerSmithingRecipe(String keyName, ItemStack result, ItemStack[] baseItem, boolean baseExact, ItemStack[] upgradeItem, boolean upgradeExact, ItemStack[] templateItem, boolean templateExact) {
         ResourceLocation key = new ResourceLocation("denizen", keyName);
         Ingredient baseItemRecipe = itemArrayToRecipe(baseItem, baseExact);
         Ingredient upgradeItemRecipe = itemArrayToRecipe(upgradeItem, upgradeExact);
@@ -165,7 +148,7 @@ public class ItemHelperImpl extends ItemHelper {
     }
 
     @Override
-    public void registerShapelessRecipe(String keyName, String group, ItemStack result, List<ItemStack[]> ingredients, boolean[] exact) {
+    public void registerShapelessRecipe(String keyName, String group, ItemStack result, List<ItemStack[]> ingredients, boolean[] exact, String category) {
         ResourceLocation key = new ResourceLocation("denizen", keyName);
         ArrayList<Ingredient> ingredientList = new ArrayList<>();
         for (int i = 0; i < ingredients.size(); i++) {

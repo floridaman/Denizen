@@ -28,13 +28,13 @@ public class EntityEyeTargetLocation implements Property {
             "ender_eye_target_location"
     };
 
-    private EntityEyeTargetLocation(EntityTag _entity) {
+    public EntityEyeTargetLocation(EntityTag _entity) {
         entity = _entity;
     }
 
     EntityTag entity;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.ender_eye_target_location>

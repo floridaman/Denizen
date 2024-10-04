@@ -29,13 +29,13 @@ public class MaterialPower implements Property {
             "power"
     };
 
-    private MaterialPower(MaterialTag _material) {
+    public MaterialPower(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.power>

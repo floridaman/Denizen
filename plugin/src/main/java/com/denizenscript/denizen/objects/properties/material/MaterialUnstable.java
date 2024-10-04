@@ -29,13 +29,13 @@ public class MaterialUnstable implements Property {
             "unstable"
     };
 
-    private MaterialUnstable(MaterialTag _material) {
+    public MaterialUnstable(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.unstable>

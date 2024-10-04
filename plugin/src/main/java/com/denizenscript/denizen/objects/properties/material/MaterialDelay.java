@@ -29,13 +29,13 @@ public class MaterialDelay implements Property {
             "delay"
     };
 
-    private MaterialDelay(MaterialTag _material) {
+    public MaterialDelay(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.delay>

@@ -54,14 +54,14 @@ public class BlockGrowsScriptEvent extends BukkitScriptEvent implements Listener
         if (!runInCheck(path, location)) {
             return false;
         }
-        if (!material.tryAdvancedMatcher(path.eventArgLowerAt(0))) {
+        if (!path.tryArgObject(0, material)) {
             return false;
         }
         if (path.switches.containsKey("from")) {
             if (!MaterialAge.describes(new MaterialTag(location.getBlockState()))) {
                 return false;
             }
-            int oldState = MaterialAge.getFrom(new MaterialTag(location.getBlockState())).getCurrent();
+            int oldState = new MaterialAge(new MaterialTag(location.getBlockState())).getCurrent();
             if (!path.checkSwitch("from", String.valueOf(oldState))) {
                 return false;
             }
@@ -70,7 +70,7 @@ public class BlockGrowsScriptEvent extends BukkitScriptEvent implements Listener
             if (!MaterialAge.describes(material)) {
                 return false;
             }
-            int newState = MaterialAge.getFrom(material).getCurrent();
+            int newState = new MaterialAge(material).getCurrent();
             if (!path.checkSwitch("to", String.valueOf(newState))) {
                 return false;
             }

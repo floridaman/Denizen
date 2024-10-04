@@ -30,13 +30,13 @@ public class MaterialInstrument implements Property {
             "instrument"
     };
 
-    private MaterialInstrument(MaterialTag _material) {
+    public MaterialInstrument(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.instrument>

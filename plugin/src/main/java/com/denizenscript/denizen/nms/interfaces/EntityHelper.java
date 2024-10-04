@@ -1,6 +1,7 @@
 package com.denizenscript.denizen.nms.interfaces;
 
-import com.denizenscript.denizen.nms.NMSHandler;
+import com.denizenscript.denizen.events.entity.EntityEntersVehicleScriptEvent;
+import com.denizenscript.denizen.events.entity.EntityExitsVehicleScriptEvent;
 import com.denizenscript.denizen.nms.util.jnbt.CompoundTag;
 import com.denizenscript.denizen.objects.EntityTag;
 import com.denizenscript.denizen.objects.LocationTag;
@@ -14,8 +15,9 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.*;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.entity.*;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
@@ -32,11 +34,11 @@ public abstract class EntityHelper {
 
     public abstract void setPose(Entity entity, Pose pose);
 
-    public void setSneaking(Entity player, boolean sneak) {
-        if (player instanceof  Player) {
-            ((Player) player).setSneaking(sneak);
+    public void setSneaking(Entity entity, boolean sneak) {
+        if (entity instanceof Player player) {
+            player.setSneaking(sneak);
         }
-        NMSHandler.entityHelper.setPose(player, sneak ? Pose.SNEAKING : Pose.STANDING);
+        setPose(entity, sneak ? Pose.SNEAKING : Pose.STANDING);
     }
 
     public abstract double getDamageTo(LivingEntity attacker, Entity target);
@@ -44,10 +46,6 @@ public abstract class EntityHelper {
     public abstract void setRiptide(Entity entity, boolean state);
 
     public abstract void forceInteraction(Player player, Location location);
-
-    public abstract Entity getEntity(World world, UUID uuid);
-
-    public abstract void setTarget(Creature entity, LivingEntity target);
 
     public abstract CompoundTag getNbtData(Entity entity);
 
@@ -75,7 +73,7 @@ public abstract class EntityHelper {
      */
     public abstract void rotate(Entity entity, float yaw, float pitch);
 
-    public abstract float getBaseYaw(Entity entity);
+    public abstract float getBaseYaw(LivingEntity entity);
 
     // Taken from C2 NMS class for less dependency on C2
     public abstract void look(Entity entity, float yaw, float pitch);
@@ -89,7 +87,7 @@ public abstract class EntityHelper {
         ItemFrame best = null;
         Vector bestHitPos = null;
         BlockFace bestHitFace = null;
-        for (Entity entity : start.getWorld().getNearbyEntities(start.clone().add(direction.clone().multiply(50)), 100, 100, 100, (e) -> e instanceof ItemFrame && ((ItemFrame) e).getItem().getType() == Material.FILLED_MAP)) {
+        for (Entity entity : start.getWorld().getNearbyEntities(start.clone().add(direction.clone().multiply(50)), 100, 100, 100, (e) -> e instanceof ItemFrame itemFrame && itemFrame.getItem().getType() == Material.FILLED_MAP)) {
             double centerDist = entity.getLocation().distanceSquared(start);
             if (centerDist > bestDist) {
                 continue;
@@ -99,9 +97,18 @@ public abstract class EntityHelper {
             double expandX = 0, expandY = 0, expandZ = 0;
             BlockFace face = frame.getFacing();
             switch (face) {
-                case SOUTH: case NORTH: expandX = EXP_RATE; expandY = EXP_RATE; break;
-                case EAST: case WEST: expandZ = EXP_RATE; expandY = EXP_RATE; break;
-                case UP: case DOWN: expandX = EXP_RATE; expandZ = EXP_RATE; break;
+                case SOUTH, NORTH -> {
+                    expandX = EXP_RATE;
+                    expandY = EXP_RATE;
+                }
+                case EAST, WEST -> {
+                    expandZ = EXP_RATE;
+                    expandY = EXP_RATE;
+                }
+                case UP, DOWN -> {
+                    expandX = EXP_RATE;
+                    expandZ = EXP_RATE;
+                }
             }
             RayTraceResult traced = frame.getBoundingBox().expand(expandX, expandY, expandZ).rayTrace(startVec, direction, range);
             if (traced == null || traced.getHitBlockFace() == null || traced.getHitBlockFace() != face) {
@@ -121,47 +128,47 @@ public abstract class EntityHelper {
         double basey = bestHitPos.getY() - Math.floor(bestHitPos.getY());
         double basez = bestHitPos.getZ() - Math.floor(bestHitPos.getZ());
         switch (bestHitFace) {
-            case NORTH:
+            case NORTH -> {
                 x = 128f - (basex * 128f);
                 y = 128f - (basey * 128f);
-                break;
-            case SOUTH:
+            }
+            case SOUTH -> {
                 x = basex * 128f;
                 y = 128f - (basey * 128f);
-                break;
-            case WEST:
+            }
+            case WEST -> {
                 x = basez * 128f;
                 y = 128f - (basey * 128f);
-                break;
-            case EAST:
+            }
+            case EAST -> {
                 x = 128f - (basez * 128f);
                 y = 128f - (basey * 128f);
-                break;
-            case UP:
+            }
+            case UP -> {
                 x = basex * 128f;
                 y = basez * 128f;
-                break;
-            case DOWN:
+            }
+            case DOWN -> {
                 x = basex * 128f;
                 y = 128f - (basez * 128f);
-                break;
+            }
         }
         MapMeta map = (MapMeta) best.getItem().getItemMeta();
         switch (best.getRotation()) {
-            case CLOCKWISE_45: case FLIPPED_45: // 90 deg
+            case CLOCKWISE_45, FLIPPED_45 -> { // 90 deg
                 double origX = x;
                 x = y;
                 y = 128f - origX;
-                break;
-            case CLOCKWISE: case COUNTER_CLOCKWISE: // 180 deg
+            }
+            case CLOCKWISE, COUNTER_CLOCKWISE -> { // 180 deg
                 x = 128f - x;
                 y = 128f - y;
-                break;
-            case CLOCKWISE_135: case COUNTER_CLOCKWISE_45: // 270 deg
+            }
+            case CLOCKWISE_135, COUNTER_CLOCKWISE_45 -> { // 270 deg
                 double origX2 = x;
                 x = 128f - y;
                 y = origX2;
-                break;
+            }
         }
         MapTag result = new MapTag();
         result.putObject("x", new ElementTag(Math.round(x)));
@@ -200,7 +207,7 @@ public abstract class EntityHelper {
                 return;
             }
         }
-        Location origin = from instanceof LivingEntity ? ((LivingEntity) from).getEyeLocation()
+        Location origin = from instanceof LivingEntity livingEntity ? livingEntity.getEyeLocation()
                 : new LocationTag(from.getLocation()).getBlockLocation().add(0.5, 0.5, 0.5);
         Location rotated = faceLocation(origin, at);
         rotate(from, rotated.getYaw(), rotated.getPitch());
@@ -374,7 +381,9 @@ public abstract class EntityHelper {
 
     public abstract void setBoundingBox(Entity entity, BoundingBox box);
 
-    public abstract List<Player> getPlayersThatSee(Entity entity);
+    public List<Player> getPlayersThatSee(Entity entity) { // TODO: once the minimum supported version is 1.20, remove from NMS
+        return List.copyOf(entity.getTrackedBy());
+    }
 
     public void sendAllUpdatePackets(Entity entity) {
         throw new UnsupportedOperationException();
@@ -382,55 +391,112 @@ public abstract class EntityHelper {
 
     public abstract void setTicksLived(Entity entity, int ticks);
 
-    public abstract void setHeadAngle(Entity entity, float angle);
+    public abstract void setHeadAngle(LivingEntity entity, float angle);
 
-    public void setGhastAttacking(Entity entity, boolean attacking) { // TODO: once minimum version is 1.19 or higher, remove from NMS
-        ((Ghast) entity).setCharging(attacking);
+    public void setGhastAttacking(Ghast ghast, boolean attacking) { // TODO: once minimum version is 1.19 or higher, remove from NMS
+        ghast.setCharging(attacking);
     }
 
-    public abstract void setEndermanAngry(Entity entity, boolean angry);
+    public abstract void setEndermanAngry(Enderman enderman, boolean angry);
 
-    public static EntityDamageEvent fireFakeDamageEvent(Entity target, Entity source, EntityDamageEvent.DamageCause cause, float amount) {
-        EntityDamageEvent ede = source == null ? new EntityDamageEvent(target, cause, amount) : new EntityDamageByEntityEvent(source, target, cause, amount);
+    public static EntityDamageEvent fireFakeDamageEvent(Entity target, EntityTag source, Location sourceLoc, EntityDamageEvent.DamageCause cause, float amount) {
+        EntityDamageEvent ede;
+        if (source != null) {
+            ede = new EntityDamageByEntityEvent(source.getBukkitEntity(), target, cause, amount);
+        }
+        else if (sourceLoc != null) {
+            ede = new EntityDamageByBlockEvent(sourceLoc.getBlock(), target, cause, amount);
+        }
+        else {
+            ede = new EntityDamageEvent(target, cause, amount);
+        }
         Bukkit.getPluginManager().callEvent(ede);
         return ede;
     }
 
-    public abstract void damage(LivingEntity target, float amount, Entity source, EntityDamageEvent.DamageCause cause);
+    public abstract void damage(LivingEntity target, float amount, EntityTag source, Location sourceLoc, EntityDamageEvent.DamageCause cause);
 
-    public void setLastHurtBy(LivingEntity mob, LivingEntity damager) {
-        throw new UnsupportedOperationException();
+    public abstract void setLastHurtBy(LivingEntity mob, LivingEntity damager);
+
+    public abstract void setFallingBlockType(FallingBlock fallingBlock, BlockData block);
+
+    public abstract EntityTag getMobSpawnerDisplayEntity(CreatureSpawner spawner);
+
+    public void setFireworkLifetime(Firework firework, int ticks) { // TODO: once minimum version is 1.19, remove from NMS
+        firework.setMaxLife(ticks);
     }
 
-    public void setFallingBlockType(FallingBlock entity, BlockData block) {
-        throw new UnsupportedOperationException();
+    public int getFireworkLifetime(Firework firework) { // TODO: once minimum version is 1.19, remove from NMS
+        return firework.getMaxLife();
     }
 
-    public EntityTag getMobSpawnerDisplayEntity(CreatureSpawner spawner) {
-        throw new UnsupportedOperationException();
-    }
+    public abstract int getInWaterTime(Zombie zombie);
 
-    public void setFireworkLifetime(Firework firework, int ticks) {
-        throw new UnsupportedOperationException();
-    }
+    public abstract void setInWaterTime(Zombie zombie, int ticks);
 
-    public int getFireworkLifetime(Firework firework) {
-        throw new UnsupportedOperationException();
-    }
-
-    public int getInWaterTime(Zombie zombie) {
-        throw new UnsupportedOperationException();
-    }
-
-    public void setInWaterTime(Zombie zombie, int ticks) {
-        throw new UnsupportedOperationException();
-    }
-
-    public void setTrackingRange(Entity entity, int range) {
-        throw new UnsupportedOperationException();
-    }
+    public abstract void setTrackingRange(Entity entity, int range);
 
     public abstract boolean isAggressive(Mob mob);
 
     public abstract void setAggressive(Mob mob, boolean aggressive);
+
+    public void setUUID(Entity entity, UUID id) {
+        throw new UnsupportedOperationException();
+    }
+
+    public float getStepHeight(Entity entity) {
+        throw new UnsupportedOperationException();
+    }
+
+    public void setStepHeight(Entity entity, float stepHeight) {
+        throw new UnsupportedOperationException();
+    }
+
+    public List<Object> convertInternalEntityDataValues(Entity entity, MapTag internalData) {
+        throw new UnsupportedOperationException();
+    }
+
+    public void modifyInternalEntityData(Entity entity, MapTag internalData) {
+        throw new UnsupportedOperationException();
+    }
+
+    public void startUsingItem(LivingEntity entity, EquipmentSlot hand) {
+        throw new UnsupportedOperationException();
+    }
+
+    public void stopUsingItem(LivingEntity entity) {
+        throw new UnsupportedOperationException();
+    }
+
+    public abstract void openHorseInventory(Player player, AbstractHorse horse);
+
+    public CompoundTag getRawNBT(Entity entity) {
+        throw new UnsupportedOperationException();
+    }
+
+    public void modifyRawNBT(Entity entity, CompoundTag tag) {
+        throw new UnsupportedOperationException();
+    }
+
+    public static class EntityEntersVehicleScriptEventImpl extends EntityEntersVehicleScriptEvent {
+        @EventHandler
+        public void onEntityMount(EntityMountEvent event) {
+            fire(event, event.getMount());
+        }
+    }
+
+    public Class<? extends EntityEntersVehicleScriptEvent> getEntersVehicleEventImpl() { // TODO: once 1.20 is the minimum supported version, implement in the ScriptEvent class as usual
+        return EntityEntersVehicleScriptEventImpl.class;
+    }
+
+    public static class EntityExitsVehicleScriptEventImpl extends EntityExitsVehicleScriptEvent {
+        @EventHandler
+        public void onEntityMount(EntityDismountEvent event) {
+            fire(event, event.getDismounted());
+        }
+    }
+
+    public Class<? extends EntityExitsVehicleScriptEvent> getExitsVehicleEventImpl() { // TODO: once 1.20 is the minimum supported version, implement in the ScriptEvent class as usual
+        return EntityExitsVehicleScriptEventImpl.class;
+    }
 }

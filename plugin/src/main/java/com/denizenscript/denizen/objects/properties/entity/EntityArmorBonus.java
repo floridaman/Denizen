@@ -29,7 +29,7 @@ public class EntityArmorBonus implements Property {
             "armor_bonus"
     };
 
-    private EntityArmorBonus(EntityTag ent) {
+    public EntityArmorBonus(EntityTag ent) {
         entity = ent;
     }
 
@@ -50,7 +50,7 @@ public class EntityArmorBonus implements Property {
         return entity.getLivingEntity().getAttribute(Attribute.GENERIC_ARMOR);
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.armor_bonus>

@@ -7,9 +7,10 @@ import com.denizenscript.denizencore.objects.Mechanism;
 import com.denizenscript.denizencore.objects.ObjectTag;
 import com.denizenscript.denizencore.objects.properties.Property;
 import com.denizenscript.denizencore.tags.Attribute;
-import com.denizenscript.denizencore.tags.core.EscapeTagBase;
+import com.denizenscript.denizencore.tags.core.EscapeTagUtil;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
+import org.bukkit.ChatColor;
 import org.bukkit.inventory.meta.ItemMeta;
 
 public class ItemDisplayname implements Property {
@@ -36,7 +37,7 @@ public class ItemDisplayname implements Property {
             "display", "display_name"
     };
 
-    private ItemDisplayname(ItemTag _item) {
+    public ItemDisplayname(ItemTag _item) {
         item = _item;
     }
 
@@ -88,7 +89,11 @@ public class ItemDisplayname implements Property {
     @Override
     public String getPropertyString() {
         if (hasDisplayName()) {
-            return NMSHandler.itemHelper.getDisplayName(item);
+            String res = NMSHandler.itemHelper.getDisplayName(item);
+            if (res.isEmpty()) { // Special case: persist empty strings as a single empty color code so it's not ignored
+                return ChatColor.WHITE.toString();
+            }
+            return res;
         }
         else {
             return null;
@@ -127,7 +132,7 @@ public class ItemDisplayname implements Property {
         else if (mechanism.matches("display_name")) {
             BukkitImplDeprecations.itemDisplayNameMechanism.warn(mechanism.context);
             ItemMeta meta = item.getItemMeta();
-            meta.setDisplayName(mechanism.hasValue() ? CoreUtilities.clearNBSPs(EscapeTagBase.unEscape(mechanism.getValue().asString())) : null);
+            meta.setDisplayName(mechanism.hasValue() ? CoreUtilities.clearNBSPs(EscapeTagUtil.unEscape(mechanism.getValue().asString())) : null);
             item.setItemMeta(meta);
         }
     }

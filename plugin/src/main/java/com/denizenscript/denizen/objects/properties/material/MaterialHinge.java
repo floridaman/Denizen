@@ -29,13 +29,13 @@ public class MaterialHinge implements Property {
             "hinge"
     };
 
-    private MaterialHinge(MaterialTag _material) {
+    public MaterialHinge(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.hinge>

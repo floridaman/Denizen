@@ -29,13 +29,13 @@ public class MaterialShape implements Property {
             "shape"
     };
 
-    private MaterialShape(MaterialTag _material) {
+    public MaterialShape(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.shape>

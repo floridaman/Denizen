@@ -28,7 +28,7 @@ public class EntityBasePlate implements Property {
             "base_plate"
     };
 
-    private EntityBasePlate(EntityTag entity) {
+    public EntityBasePlate(EntityTag entity) {
         dentity = entity;
     }
 
@@ -48,7 +48,7 @@ public class EntityBasePlate implements Property {
         return "base_plate";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.base_plate>

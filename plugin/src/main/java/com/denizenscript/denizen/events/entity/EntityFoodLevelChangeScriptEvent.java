@@ -55,7 +55,7 @@ public class EntityFoodLevelChangeScriptEvent extends BukkitScriptEvent implemen
     @Override
     public boolean matches(ScriptPath path) {
         String target = path.eventArgLowerAt(0);
-        if (!entity.tryAdvancedMatcher(target)) {
+        if (!entity.tryAdvancedMatcher(target, path.context)) {
             return false;
         }
         if (!path.tryObjectSwitch("item", item)) {
@@ -69,8 +69,8 @@ public class EntityFoodLevelChangeScriptEvent extends BukkitScriptEvent implemen
 
     @Override
     public boolean applyDetermination(ScriptPath path, ObjectTag determinationObj) {
-        if (determinationObj instanceof ElementTag && determinationObj.asElement().isInt()) {
-            event.setFoodLevel(determinationObj.asElement().asInt());
+        if (determinationObj instanceof ElementTag element && element.isInt()) {
+            event.setFoodLevel(element.asInt());
             return true;
         }
         return super.applyDetermination(path, determinationObj);

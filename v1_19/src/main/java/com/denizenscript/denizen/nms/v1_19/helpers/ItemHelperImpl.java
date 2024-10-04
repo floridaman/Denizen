@@ -1,29 +1,34 @@
 package com.denizenscript.denizen.nms.v1_19.helpers;
 
+import com.denizenscript.denizen.nms.interfaces.ItemHelper;
+import com.denizenscript.denizen.nms.util.PlayerProfile;
+import com.denizenscript.denizen.nms.util.jnbt.CompoundTag;
+import com.denizenscript.denizen.nms.util.jnbt.IntArrayTag;
+import com.denizenscript.denizen.nms.util.jnbt.Tag;
 import com.denizenscript.denizen.nms.v1_19.ReflectionMappingsInfo;
+import com.denizenscript.denizen.nms.v1_19.impl.jnbt.CompoundTagImpl;
 import com.denizenscript.denizen.objects.ItemTag;
 import com.denizenscript.denizen.utilities.FormattedTextHelper;
+import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizencore.utilities.ReflectionHelper;
-import com.denizenscript.denizen.nms.util.jnbt.*;
-import com.denizenscript.denizen.nms.v1_19.impl.jnbt.CompoundTagImpl;
 import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.google.common.collect.*;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
-import com.denizenscript.denizen.nms.interfaces.ItemHelper;
-import com.denizenscript.denizen.nms.util.PlayerProfile;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.chat.ComponentSerializer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.alchemy.PotionBrewing;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -38,19 +43,19 @@ import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.craftbukkit.v1_19_R1.CraftServer;
-import org.bukkit.craftbukkit.v1_19_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_19_R1.block.data.CraftBlockData;
-import org.bukkit.craftbukkit.v1_19_R1.inventory.CraftInventoryPlayer;
-import org.bukkit.craftbukkit.v1_19_R1.inventory.CraftItemStack;
-import org.bukkit.craftbukkit.v1_19_R1.util.CraftMagicNumbers;
-import org.bukkit.craftbukkit.v1_19_R1.util.CraftNamespacedKey;
-import org.bukkit.inventory.RecipeChoice;
-import org.bukkit.inventory.ShapedRecipe;
+import org.bukkit.craftbukkit.v1_19_R3.CraftServer;
+import org.bukkit.craftbukkit.v1_19_R3.CraftWorld;
+import org.bukkit.craftbukkit.v1_19_R3.block.data.CraftBlockData;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftInventoryPlayer;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftRecipe;
+import org.bukkit.craftbukkit.v1_19_R3.util.CraftMagicNumbers;
+import org.bukkit.craftbukkit.v1_19_R3.util.CraftNamespacedKey;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.RecipeChoice;
+import org.bukkit.inventory.ShapedRecipe;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -71,7 +76,7 @@ public class ItemHelperImpl extends ItemHelper {
     public void setMaxStackSize(Material material, int size) {
         try {
             ReflectionHelper.getFinalSetter(Material.class, "maxStack").invoke(material, size);
-            ReflectionHelper.getFinalSetter(Item.class, ReflectionMappingsInfo.Item_maxStackSize).invoke(Registry.ITEM.get(CraftNamespacedKey.toMinecraft(material.getKey())), size);
+            ReflectionHelper.getFinalSetter(Item.class, ReflectionMappingsInfo.Item_maxStackSize).invoke(BuiltInRegistries.ITEM.get(CraftNamespacedKey.toMinecraft(material.getKey())), size);
         }
         catch (Throwable ex) {
             Debug.echoError(ex);
@@ -84,43 +89,6 @@ public class ItemHelperImpl extends ItemHelper {
     }
 
     public static Field RECIPE_MANAGER_BY_NAME = ReflectionHelper.getFields(RecipeManager.class).get(ReflectionMappingsInfo.RecipeManager_byName, Map.class);
-
-    @Override
-    public void removeRecipe(NamespacedKey key) {
-        ResourceLocation nmsKey = CraftNamespacedKey.toMinecraft(key);
-        RecipeManager recipeManager = ((CraftServer) Bukkit.getServer()).getServer().getRecipeManager();
-        try {
-            Map<ResourceLocation, net.minecraft.world.item.crafting.Recipe<?>> byName = (Map) RECIPE_MANAGER_BY_NAME.get(recipeManager);
-            byName.remove(nmsKey);
-        }
-        catch (Throwable ex) {
-            Debug.echoError(ex);
-        }
-        for (Object2ObjectLinkedOpenHashMap<ResourceLocation, net.minecraft.world.item.crafting.Recipe<?>> recipeMap : recipeManager.recipes.values()) {
-            recipeMap.remove(nmsKey);
-        }
-    }
-
-    @Override
-    public void clearDenizenRecipes() {
-        RecipeManager recipeManager = ((CraftServer) Bukkit.getServer()).getServer().getRecipeManager();
-        Map<ResourceLocation, net.minecraft.world.item.crafting.Recipe<?>> byName;
-        try {
-            byName = (Map) RECIPE_MANAGER_BY_NAME.get(recipeManager);
-        }
-        catch (Throwable ex) {
-            Debug.echoError(ex);
-            return;
-        }
-        for (Object2ObjectLinkedOpenHashMap<ResourceLocation, net.minecraft.world.item.crafting.Recipe<?>> recipeMap : recipeManager.recipes.values()) {
-            for (ResourceLocation key : new ArrayList<>(recipeMap.keySet())) {
-                if (key.getNamespace().equalsIgnoreCase("denizen")) {
-                    recipeMap.remove(key);
-                    byName.remove(key);
-                }
-            }
-        }
-    }
 
     @Override
     public void setShapedRecipeIngredient(ShapedRecipe recipe, char c, ItemStack[] item, boolean exact) {
@@ -150,21 +118,22 @@ public class ItemHelperImpl extends ItemHelper {
     }
 
     @Override
-    public void registerFurnaceRecipe(String keyName, String group, ItemStack result, ItemStack[] ingredient, float exp, int time, String type, boolean exact) {
+    public void registerFurnaceRecipe(String keyName, String group, ItemStack result, ItemStack[] ingredient, float exp, int time, String type, boolean exact, String category) {
         ResourceLocation key = new ResourceLocation("denizen", keyName);
         Ingredient itemRecipe = itemArrayToRecipe(ingredient, exact);
         AbstractCookingRecipe recipe;
+        CookingBookCategory categoryValue = category == null ? CookingBookCategory.MISC : CookingBookCategory.valueOf(CoreUtilities.toUpperCase(category));
         if (type.equalsIgnoreCase("smoker")) {
-            recipe = new SmokingRecipe(key, group, itemRecipe, CraftItemStack.asNMSCopy(result), exp, time);
+            recipe = new SmokingRecipe(key, group, categoryValue, itemRecipe, CraftItemStack.asNMSCopy(result), exp, time);
         }
         else if (type.equalsIgnoreCase("blast")) {
-            recipe = new BlastingRecipe(key, group, itemRecipe, CraftItemStack.asNMSCopy(result), exp, time);
+            recipe = new BlastingRecipe(key, group, categoryValue, itemRecipe, CraftItemStack.asNMSCopy(result), exp, time);
         }
         else if (type.equalsIgnoreCase("campfire")) {
-            recipe = new CampfireCookingRecipe(key, group, itemRecipe, CraftItemStack.asNMSCopy(result), exp, time);
+            recipe = new CampfireCookingRecipe(key, group, categoryValue, itemRecipe, CraftItemStack.asNMSCopy(result), exp, time);
         }
         else {
-            recipe = new SmeltingRecipe(key, group, itemRecipe, CraftItemStack.asNMSCopy(result), exp, time);
+            recipe = new SmeltingRecipe(key, group, categoryValue, itemRecipe, CraftItemStack.asNMSCopy(result), exp, time);
         }
         ((CraftServer) Bukkit.getServer()).getServer().getRecipeManager().addRecipe(recipe);
     }
@@ -178,22 +147,24 @@ public class ItemHelperImpl extends ItemHelper {
     }
 
     @Override
-    public void registerSmithingRecipe(String keyName, ItemStack result, ItemStack[] baseItem, boolean baseExact, ItemStack[] upgradeItem, boolean upgradeExact) {
+    public void registerSmithingRecipe(String keyName, ItemStack result, ItemStack[] baseItem, boolean baseExact, ItemStack[] upgradeItem, boolean upgradeExact, ItemStack[] templateItem, boolean templateExact) {
         ResourceLocation key = new ResourceLocation("denizen", keyName);
         Ingredient baseItemRecipe = itemArrayToRecipe(baseItem, baseExact);
         Ingredient upgradeItemRecipe = itemArrayToRecipe(upgradeItem, upgradeExact);
-        UpgradeRecipe recipe = new UpgradeRecipe(key, baseItemRecipe, upgradeItemRecipe, CraftItemStack.asNMSCopy(result));
+        LegacyUpgradeRecipe recipe = new LegacyUpgradeRecipe(key, baseItemRecipe, upgradeItemRecipe, CraftItemStack.asNMSCopy(result));
         ((CraftServer) Bukkit.getServer()).getServer().getRecipeManager().addRecipe(recipe);
     }
 
     @Override
-    public void registerShapelessRecipe(String keyName, String group, ItemStack result, List<ItemStack[]> ingredients, boolean[] exact) {
+    public void registerShapelessRecipe(String keyName, String group, ItemStack result, List<ItemStack[]> ingredients, boolean[] exact, String category) {
         ResourceLocation key = new ResourceLocation("denizen", keyName);
         ArrayList<Ingredient> ingredientList = new ArrayList<>();
+        CraftingBookCategory categoryValue = category == null ? CraftingBookCategory.MISC : CraftingBookCategory.valueOf(CoreUtilities.toUpperCase(category));
         for (int i = 0; i < ingredients.size(); i++) {
             ingredientList.add(itemArrayToRecipe(ingredients.get(i), exact[i]));
         }
-        ShapelessRecipe recipe = new ShapelessRecipe(key, group, CraftItemStack.asNMSCopy(result), NonNullList.of(null, ingredientList.toArray(new Ingredient[0])));
+        // TODO: 1.19.3: Add support for choosing a CraftingBookCategory
+        ShapelessRecipe recipe = new ShapelessRecipe(key, group, categoryValue, CraftItemStack.asNMSCopy(result), NonNullList.of(null, ingredientList.toArray(new Ingredient[0])));
         ((CraftServer) Bukkit.getServer()).getServer().getRecipeManager().addRecipe(recipe);
     }
 
@@ -333,7 +304,7 @@ public class ItemHelperImpl extends ItemHelper {
             return;
         }
         BaseComponent[] components = FormattedTextHelper.parse(name, ChatColor.WHITE);
-        display.put("Name", net.minecraft.nbt.StringTag.valueOf(ComponentSerializer.toString(components)));
+        display.put("Name", net.minecraft.nbt.StringTag.valueOf(FormattedTextHelper.componentToJson(components)));
         item.setItemStack(CraftItemStack.asBukkitCopy(nmsItemStack));
     }
 
@@ -346,12 +317,15 @@ public class ItemHelperImpl extends ItemHelper {
             tag.put("display", display);
         }
         if (lore == null || lore.isEmpty()) {
-            display.put("Lore", null);
+            display.remove("Lore");
+            if (display.isEmpty()) {
+                tag.remove("display");
+            }
         }
         else {
             ListTag tagList = new ListTag();
             for (String line : lore) {
-                tagList.add(net.minecraft.nbt.StringTag.valueOf(ComponentSerializer.toString(FormattedTextHelper.parse(line, ChatColor.WHITE))));
+                tagList.add(net.minecraft.nbt.StringTag.valueOf(FormattedTextHelper.componentToJson(FormattedTextHelper.parse(line, ChatColor.WHITE))));
             }
             display.put("Lore", tagList);
         }
@@ -400,8 +374,8 @@ public class ItemHelperImpl extends ItemHelper {
     public static void renderFullMap(MapItemSavedData worldmap, int xMin, int zMin, int xMax, int zMax) {
         Level world = ((CraftWorld) worldmap.mapView.getWorld()).getHandle();
         int scale = 1 << worldmap.scale;
-        int mapX = worldmap.x;
-        int mapZ = worldmap.z;
+        int mapX = worldmap.centerX;
+        int mapZ = worldmap.centerZ;
         for (int x = xMin; x < xMax; x++) {
             double d0 = 0.0D;
             for (int z = zMin; z < zMax; z++) {
@@ -501,7 +475,7 @@ public class ItemHelperImpl extends ItemHelper {
 
     @Override
     public BlockData getPlacedBlock(Material material) {
-        Item nmsItem = Registry.ITEM.getOptional(CraftNamespacedKey.toMinecraft(material.getKey())).orElse(null);
+        Item nmsItem = BuiltInRegistries.ITEM.getOptional(CraftNamespacedKey.toMinecraft(material.getKey())).orElse(null);
         if (nmsItem instanceof BlockItem) {
             Block block = ((BlockItem) nmsItem).getBlock();
             return CraftBlockData.fromData(block.defaultBlockState());
@@ -513,6 +487,25 @@ public class ItemHelperImpl extends ItemHelper {
     public boolean isValidMix(ItemStack input, ItemStack ingredient) {
         net.minecraft.world.item.ItemStack nmsInput = CraftItemStack.asNMSCopy(input);
         net.minecraft.world.item.ItemStack nmsIngredient = CraftItemStack.asNMSCopy(ingredient);
-        return net.minecraft.world.item.alchemy.PotionBrewing.hasMix(nmsInput, nmsIngredient);
+        return PotionBrewing.hasMix(nmsInput, nmsIngredient);
+    }
+
+    public static Class<?> PaperPotionMix_CLASS = null;
+    public static Map<NamespacedKey, BrewingRecipe> customBrewingRecipes = null;
+
+    @Override
+    public Map<NamespacedKey, BrewingRecipe> getCustomBrewingRecipes() {
+        if (customBrewingRecipes == null) {
+            customBrewingRecipes = Maps.transformValues((Map<NamespacedKey, ?>) ReflectionHelper.getFieldValue(PotionBrewing.class, "CUSTOM_MIXES", null), paperMix -> {
+                if (PaperPotionMix_CLASS == null) {
+                    PaperPotionMix_CLASS = paperMix.getClass();
+                }
+                RecipeChoice ingredient = CraftRecipe.toBukkit(ReflectionHelper.getFieldValue(PaperPotionMix_CLASS, "ingredient", paperMix));
+                RecipeChoice input = CraftRecipe.toBukkit(ReflectionHelper.getFieldValue(PaperPotionMix_CLASS, "input", paperMix));
+                ItemStack result = CraftItemStack.asBukkitCopy(ReflectionHelper.getFieldValue(PaperPotionMix_CLASS, "result", paperMix));
+                return new BrewingRecipe(ingredient, input, result);
+            });
+        }
+        return customBrewingRecipes;
     }
 }

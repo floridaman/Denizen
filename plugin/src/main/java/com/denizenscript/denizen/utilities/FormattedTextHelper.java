@@ -1,15 +1,22 @@
 package com.denizenscript.denizen.utilities;
 
 import com.denizenscript.denizen.nms.NMSHandler;
-import com.denizenscript.denizen.objects.ColorTag;
+import com.denizenscript.denizen.nms.NMSVersion;
 import com.denizenscript.denizen.objects.properties.bukkit.BukkitElementExtensions;
+import com.denizenscript.denizencore.objects.core.ColorTag;
 import com.denizenscript.denizencore.objects.core.ElementTag;
+import com.denizenscript.denizencore.objects.core.ListTag;
+import com.denizenscript.denizencore.objects.core.MapTag;
 import com.denizenscript.denizencore.utilities.AsciiMatcher;
 import com.denizenscript.denizencore.utilities.CoreConfiguration;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizencore.utilities.debugging.Debug;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.*;
+import net.md_5.bungee.api.chat.hover.content.*;
+import net.md_5.bungee.chat.*;
 
 import java.util.List;
 
@@ -55,6 +62,9 @@ public class FormattedTextHelper {
     }
 
     public static boolean hasRootFormat(BaseComponent component) {
+        if (component == null) {
+            return false;
+        }
         if (component.hasFormatting()) {
             return true;
         }
@@ -83,7 +93,9 @@ public class FormattedTextHelper {
             builder.append(RESET);
         }
         for (BaseComponent component : components) {
-            builder.append(stringify(component));
+            if (component != null) {
+                builder.append(stringify(component));
+            }
         }
         String output = builder.toString();
         while (output.endsWith(RESET)) {
@@ -141,7 +153,8 @@ public class FormattedTextHelper {
         if (component.isObfuscated()) {
             builder.append(ChatColor.MAGIC);
         }
-        if (component.getFontRaw() != null || (component.getFont() != null && component.getColorRaw() != null)) {
+        boolean hasFont = component.getFontRaw() != null;
+        if (hasFont) {
             builder.append(ChatColor.COLOR_CHAR).append("[font=").append(component.getFont()).append("]");
         }
         boolean hasInsertion = component.getInsertion() != null;
@@ -161,15 +174,16 @@ public class FormattedTextHelper {
         if (component instanceof TextComponent) {
             builder.append(((TextComponent) component).getText());
         }
-        else if (component instanceof TranslatableComponent) {
-            builder.append(ChatColor.COLOR_CHAR).append("[translate=").append(escape(((TranslatableComponent) component).getTranslate()));
-            List<BaseComponent> with = ((TranslatableComponent) component).getWith();
-            if (with != null) {
-                for (BaseComponent withComponent : with) {
-                    builder.append(";").append(escape(stringify(withComponent)));
-                }
+        else if (component instanceof TranslatableComponent translatableComponent) {
+            MapTag map = new MapTag();
+            map.putObject("key", new ElementTag(translatableComponent.getTranslate(), true));
+            if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_20) && translatableComponent.getFallback() != null) {
+                map.putObject("fallback", new ElementTag(translatableComponent.getFallback(), true));
             }
-            builder.append("]");
+            if (translatableComponent.getWith() != null) {
+                map.putObject("with", new ListTag(translatableComponent.getWith(), baseComponent -> new ElementTag(stringify(baseComponent), true)));
+            }
+            builder.append(ChatColor.COLOR_CHAR).append("[translate=").append(escape(map.savable())).append(']');
         }
         else if (component instanceof SelectorComponent) {
             builder.append(ChatColor.COLOR_CHAR).append("[selector=").append(escape(((SelectorComponent) component).getSelector())).append("]");
@@ -197,6 +211,9 @@ public class FormattedTextHelper {
         if (hasInsertion) {
             builder.append(ChatColor.COLOR_CHAR + "[/insertion]");
         }
+        if (hasFont) {
+            builder.append(ChatColor.COLOR_CHAR + "[reset=font]");
+        }
         builder.append(RESET);
         String output = builder.toString();
         return cleanRedundantCodes(output);
@@ -204,13 +221,23 @@ public class FormattedTextHelper {
 
     public static final String RESET = ChatColor.RESET.toString(), POSSIBLE_RESET_PREFIX = RESET + ChatColor.COLOR_CHAR;
 
-    public static TextComponent copyFormatToNewText(TextComponent last) {
+    private static Boolean procBool(Boolean input, boolean optimize) {
+        if (input == null) {
+            return null;
+        }
+        if (optimize) {
+            return input ? true : null;
+        }
+        return input;
+    }
+
+    public static TextComponent copyFormatToNewText(TextComponent last, boolean optimize) {
         TextComponent toRet = new TextComponent();
-        toRet.setObfuscated(last.isObfuscatedRaw());
-        toRet.setBold(last.isBoldRaw());
-        toRet.setStrikethrough(last.isStrikethroughRaw());
-        toRet.setUnderlined(last.isUnderlinedRaw());
-        toRet.setItalic(last.isItalicRaw());
+        toRet.setObfuscated(procBool(last.isObfuscatedRaw(), optimize));
+        toRet.setBold(procBool(last.isBoldRaw(), optimize));
+        toRet.setStrikethrough(procBool(last.isStrikethroughRaw(), optimize));
+        toRet.setUnderlined(procBool(last.isUnderlinedRaw(), optimize));
+        toRet.setItalic(procBool(last.isItalicRaw(), optimize));
         toRet.setColor(last.getColorRaw());
         return toRet;
     }
@@ -359,7 +386,7 @@ public class FormattedTextHelper {
                             root.addExtra(nextText);
                         }
                         nextText = getCleanRef();
-                        nextText.setColor(ChatColor.of(color.toString()));
+                        nextText.setColor(ChatColor.of(CoreUtilities.toUpperCase(color.toString())));
                         firstChar += 12;
                         lastStart = firstChar + 2;
                     }
@@ -378,7 +405,7 @@ public class FormattedTextHelper {
                     if (!nextText.getText().isEmpty()) {
                         root.addExtra(nextText);
                     }
-                    nextText = copyFormatToNewText(nextText);
+                    nextText = copyFormatToNewText(nextText, false);
                     if (c == 'k' || c == 'K') {
                         nextText.setObfuscated(true);
                     }
@@ -411,7 +438,7 @@ public class FormattedTextHelper {
             return null;
         }
         try {
-            return parseInternal(str, baseColor, cleanBase);
+            return parseInternal(str, baseColor, cleanBase, false);
         }
         catch (Throwable ex) {
             Debug.echoError(ex);
@@ -419,7 +446,42 @@ public class FormattedTextHelper {
         return new BaseComponent[]{new TextComponent(str)};
     }
 
-    public static BaseComponent[] parseInternal(String str, ChatColor baseColor, boolean cleanBase) {
+    private static BaseComponent parseTranslatable(String str, ChatColor baseColor, boolean optimize) {
+        if (!str.startsWith("map@")) {
+            List<String> innardParts = CoreUtilities.split(str, ';');
+            TranslatableComponent component = new TranslatableComponent(unescape(innardParts.get(0)));
+            for (int i = 1; i < innardParts.size(); i++) {
+                for (BaseComponent subComponent : parseInternal(unescape(innardParts.get(i)), baseColor, false, optimize)) {
+                    component.addWith(subComponent);
+                }
+            }
+            return component;
+        }
+        MapTag map = MapTag.valueOf(unescape(str), CoreUtilities.noDebugContext);
+        if (map == null) {
+            return new TextComponent(str);
+        }
+        ElementTag translationKey = map.getElement("key");
+        if (translationKey == null) {
+            return new TextComponent(str);
+        }
+        TranslatableComponent component = new TranslatableComponent(translationKey.asString());
+        ElementTag fallback = map.getElement("fallback");
+        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_20) && fallback != null) {
+            component.setFallback(fallback.asString());
+        }
+        ListTag withList = map.getObjectAs("with", ListTag.class, CoreUtilities.noDebugContext);
+        if (withList != null) {
+            for (String with : withList) {
+                for (BaseComponent withComponent : parseInternal(with, baseColor, false, optimize)) {
+                    component.addWith(withComponent);
+                }
+            }
+        }
+        return component;
+    }
+
+    public static BaseComponent[] parseInternal(String str, ChatColor baseColor, boolean cleanBase, boolean optimize) {
         str = CoreUtilities.clearNBSPs(str);
         int firstChar = str.indexOf(ChatColor.COLOR_CHAR);
         if (firstChar == -1) {
@@ -439,21 +501,21 @@ public class FormattedTextHelper {
             }
             // Ensure compat with certain weird vanilla translate strings.
             if (str.startsWith(ChatColor.COLOR_CHAR + "[translate=") && str.indexOf(']') == str.length() - 1) {
-                String translatable = str.substring("&[translate=".length(), str.length() - 1);
-                TranslatableComponent component = new TranslatableComponent();
-                List<String> innardParts = CoreUtilities.split(translatable, ';');
-                component.setTranslate(unescape(innardParts.get(0)));
-                for (int i = 1; i < innardParts.size(); i++) {
-                    for (BaseComponent subComponent : parseInternal(unescape(innardParts.get(i)), baseColor, false)) {
-                        component.addWith(subComponent);
-                    }
-                }
-                return new BaseComponent[] { component };
+                return new BaseComponent[] {parseTranslatable(str.substring("&[translate=".length(), str.length() - 1), baseColor, optimize)};
             }
+            if (str.length() > 3 && str.startsWith((ChatColor.COLOR_CHAR + "")) && hexMatcher.isMatch(str.charAt(1))
+                    && str.startsWith(ChatColor.COLOR_CHAR + "[translate=", 2) && str.indexOf(']') == str.length() - 1) { // eg "&6&[translate=block.minecraft.ominous_banner]"
+                BaseComponent component = parseTranslatable(str.substring("&[translate=".length() + 2, str.length() - 1), baseColor, optimize);
+                component.setColor(ChatColor.getByChar(str.charAt(1)));
+                return new BaseComponent[] {component};
+            }
+        }
+        if (!optimize) {
+            optimize = str.contains(ChatColor.COLOR_CHAR + "[optimize=true]");
         }
         TextComponent root = new TextComponent();
         TextComponent base = new TextComponent();
-        if (cleanBase) {
+        if (cleanBase && !optimize) {
             base.setBold(false);
             base.setItalic(false);
             base.setStrikethrough(false);
@@ -493,13 +555,13 @@ public class FormattedTextHelper {
                         nextText.setText(nextText.getText() + str.substring(started, i));
                         base.addExtra(nextText);
                         lastText = nextText;
-                        nextText = copyFormatToNewText(lastText);
+                        nextText = copyFormatToNewText(lastText, optimize);
                         nextText.setText("");
                         if (innardType.equals("score") && innardParts.size() == 2) {
                             ScoreComponent component = new ScoreComponent(unescape(innardBase.get(1)), unescape(innardParts.get(0)), unescape(innardParts.get(1)));
                             lastText.addExtra(component);
                         }
-                        else if (innardType.equals("keybind") && Utilities.matchesNamespacedKey(innardBase.get(1))) {
+                        else if (innardType.equals("keybind") && Utilities.matchesNamespacedKeyButCaseInsensitive(innardBase.get(1))) {
                             KeybindComponent component = new KeybindComponent();
                             component.setKeybind(unescape(innardBase.get(1)));
                             lastText.addExtra(component);
@@ -509,14 +571,7 @@ public class FormattedTextHelper {
                             lastText.addExtra(component);
                         }
                         else if (innardType.equals("translate")) {
-                            TranslatableComponent component = new TranslatableComponent();
-                            component.setTranslate(unescape(innardBase.get(1)));
-                            for (String extra : innardParts) {
-                                for (BaseComponent subComponent : parseInternal(unescape(extra), baseColor, false)) {
-                                    component.addWith(subComponent);
-                                }
-                            }
-                            lastText.addExtra(component);
+                            lastText.addExtra(parseTranslatable(innards.substring("translate=".length()), baseColor, optimize));
                         }
                         else if (innardType.equals("click") && innardParts.size() == 1) {
                             int endIndex = findEndIndexFor(str, "click", endBracket);
@@ -526,7 +581,7 @@ public class FormattedTextHelper {
                             TextComponent clickableText = new TextComponent();
                             ClickEvent.Action action = ElementTag.asEnum(ClickEvent.Action.class, innardBase.get(1));
                             clickableText.setClickEvent(new ClickEvent(action == null ? ClickEvent.Action.SUGGEST_COMMAND : action, unescape(innardParts.get(0))));
-                            for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), baseColor, false)) {
+                            for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), baseColor, false, optimize)) {
                                 clickableText.addExtra(subComponent);
                             }
                             lastText.addExtra(clickableText);
@@ -542,7 +597,7 @@ public class FormattedTextHelper {
                             if (HoverFormatHelper.processHoverInput(action == null ? HoverEvent.Action.SHOW_TEXT : action, hoverableText, innardParts.get(0))) {
                                 continue;
                             }
-                            for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), baseColor, false)) {
+                            for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), baseColor, false, optimize)) {
                                 hoverableText.addExtra(subComponent);
                             }
                             lastText.addExtra(hoverableText);
@@ -559,7 +614,7 @@ public class FormattedTextHelper {
                             }
                             TextComponent insertableText = new TextComponent();
                             insertableText.setInsertion(unescape(innardBase.get(1)));
-                            for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), baseColor, false)) {
+                            for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), baseColor, false, optimize)) {
                                 insertableText.addExtra(subComponent);
                             }
                             lastText.addExtra(insertableText);
@@ -598,7 +653,7 @@ public class FormattedTextHelper {
                                 color = ChatColor.getByChar(colorChar.charAt(0));
                             }
                             else if (colorChar.length() == 7) {
-                                color = ChatColor.of(colorChar);
+                                color = ChatColor.of(CoreUtilities.toUpperCase(colorChar));
                             }
                             else if (CoreConfiguration.debugVerbose) {
                                 Debug.echoError("Text parse issue: cannot interpret color '" + innardBase.get(1) + "'.");
@@ -611,7 +666,7 @@ public class FormattedTextHelper {
                                 else {
                                     TextComponent colorText = new TextComponent();
                                     colorText.setColor(color);
-                                    for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), color, false)) {
+                                    for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), color, false, optimize)) {
                                         colorText.addExtra(subComponent);
                                     }
                                     lastText.addExtra(colorText);
@@ -635,7 +690,7 @@ public class FormattedTextHelper {
                                     endIndex = str.length();
                                 }
                                 String gradientText = BukkitElementExtensions.doGradient(str.substring(endBracket + 1, endIndex), fromColor, toColor, styleEnum);
-                                for (BaseComponent subComponent : parseInternal(gradientText, baseColor, false)) {
+                                for (BaseComponent subComponent : parseInternal(gradientText, baseColor, false, optimize)) {
                                     lastText.addExtra(subComponent);
                                 }
                                 endBracket = endIndex - 1;
@@ -649,12 +704,15 @@ public class FormattedTextHelper {
                             else {
                                 TextComponent fontText = new TextComponent();
                                 fontText.setFont(innardBase.get(1));
-                                for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), baseColor, false)) {
+                                for (BaseComponent subComponent : parseInternal(str.substring(endBracket + 1, endIndex), baseColor, false, optimize)) {
                                     fontText.addExtra(subComponent);
                                 }
                                 lastText.addExtra(fontText);
                                 endBracket = endIndex + "&[reset=font".length();
                             }
+                        }
+                        else if (innardType.equals("optimize")) {
+                            // Ignore
                         }
                         else {
                             if (CoreConfiguration.debugVerbose) {
@@ -708,7 +766,7 @@ public class FormattedTextHelper {
                         base.addExtra(nextText);
                     }
                     nextText = new TextComponent();
-                    nextText.setColor(ChatColor.of(color.toString()));
+                    nextText.setColor(ChatColor.of(CoreUtilities.toUpperCase(color.toString())));
                     i += 13;
                     started = i + 1;
                     continue;
@@ -718,7 +776,7 @@ public class FormattedTextHelper {
                     if (!nextText.getText().isEmpty()) {
                         base.addExtra(nextText);
                     }
-                    nextText = copyFormatToNewText(nextText);
+                    nextText = copyFormatToNewText(nextText, optimize);
                     if (code == 'k' || code == 'K') {
                         nextText.setObfuscated(true);
                     }
@@ -764,7 +822,7 @@ public class FormattedTextHelper {
         if (!nextText.getText().isEmpty()) {
             base.addExtra(nextText);
         }
-        return new BaseComponent[] { cleanBase ? root : base };
+        return new BaseComponent[] { cleanBase && !optimize ? root : base };
     }
 
     public static int indexOfLastColorBlockStart(String text) {
@@ -800,5 +858,27 @@ public class FormattedTextHelper {
             message = prePart + "... *snip!*..." + postPart;
         }
         return message;
+    }
+
+    // Spigot ComponentSerializer
+    public static final Gson vanillaStyleSpigotComponentGSON = new GsonBuilder()
+            .registerTypeAdapter(BaseComponent.class, new ComponentSerializer())
+            .registerTypeAdapter(TextComponent.class, new TextComponentSerializer())
+            .registerTypeAdapter(TranslatableComponent.class, new TranslatableComponentSerializer())
+            .registerTypeAdapter(KeybindComponent.class, new KeybindComponentSerializer())
+            .registerTypeAdapter(ScoreComponent.class, new ScoreComponentSerializer())
+            .registerTypeAdapter(SelectorComponent.class, new SelectorComponentSerializer())
+            .registerTypeAdapter(Entity.class, new EntitySerializer())
+            .registerTypeAdapter(Text.class, new TextSerializer())
+            .registerTypeAdapter(Item.class, new ItemSerializer())
+            .registerTypeAdapter(ItemTag.class, new ItemTag.Serializer())
+            .disableHtmlEscaping() // Mojang
+            .create();
+
+    public static String componentToJson(BaseComponent[] components) {
+        if (components.length == 1) {
+            return vanillaStyleSpigotComponentGSON.toJson(components[0]);
+        }
+        return vanillaStyleSpigotComponentGSON.toJson(new TextComponent(components));
     }
 }

@@ -28,7 +28,7 @@ public class EntityCritical implements Property {
             "critical"
     };
 
-    private EntityCritical(EntityTag entity) {
+    public EntityCritical(EntityTag entity) {
         critical = entity;
     }
 
@@ -48,7 +48,7 @@ public class EntityCritical implements Property {
         return (AbstractArrow) critical.getBukkitEntity();
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.critical>

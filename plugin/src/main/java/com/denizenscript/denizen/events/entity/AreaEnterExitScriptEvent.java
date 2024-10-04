@@ -71,10 +71,10 @@ public class AreaEnterExitScriptEvent extends BukkitScriptEvent implements Liste
         if (areaName.equals("notable")) { // TODO: Deprecate?
             areaName = path.eventArgLowerAt(3);
         }
-        if (!area.tryAdvancedMatcher(areaName)) {
+        if (!area.tryAdvancedMatcher(areaName, path.context)) {
             return false;
         }
-        if (!currentEntity.tryAdvancedMatcher(path.eventArgLowerAt(0))) {
+        if (!path.tryArgObject(0, currentEntity)) {
             return false;
         }
         return super.matches(path);
@@ -157,10 +157,12 @@ public class AreaEnterExitScriptEvent extends BukkitScriptEvent implements Liste
             }
             if (area.equals("cuboid") || area.equals("ellipsoid") || area.equals("polygon")) {
                 doTrackAll = true;
+                needsMatchers = true;
             }
             MatchHelper matcher = createMatcher(area);
             if (matcher instanceof AlwaysMatchHelper) {
                 doTrackAll = true;
+                needsMatchers = true;
             }
             else if (!needsMatchers && (matcher instanceof ExactMatchHelper)) {
                 exacts.add(area);
@@ -171,6 +173,7 @@ public class AreaEnterExitScriptEvent extends BukkitScriptEvent implements Liste
             matchList.add(matcher);
             if (area.startsWith("area_flagged:")) {
                 flags.add(CoreUtilities.toLowerCase(area.substring("area_flagged:".length())));
+                needsMatchers = true;
             }
         }
         exactTracked = needsMatchers ? null : exacts.toArray(new String[0]);

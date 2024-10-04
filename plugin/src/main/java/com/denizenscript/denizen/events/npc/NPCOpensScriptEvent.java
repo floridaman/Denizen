@@ -26,6 +26,8 @@ public class NPCOpensScriptEvent extends BukkitScriptEvent implements Listener {
     //
     // @Triggers when an NPC opens a door or gate.
     //
+    // @Switch npc:<npc> to only process the event if the spawned NPC matches.
+    //
     // @Context
     // <context.location> returns the location of the door or gate opened.
     //
@@ -35,6 +37,7 @@ public class NPCOpensScriptEvent extends BukkitScriptEvent implements Listener {
 
     public NPCOpensScriptEvent() {
         registerCouldMatcher("npc opens <block>");
+        registerSwitches("npc");
     }
 
     public NPCTag npc;
@@ -42,10 +45,13 @@ public class NPCOpensScriptEvent extends BukkitScriptEvent implements Listener {
 
     @Override
     public boolean matches(ScriptPath path) {
+        if (!path.tryObjectSwitch("npc", npc)) {
+            return false;
+        }
         if (!runInCheck(path, location)) {
             return false;
         }
-        if (!new MaterialTag(location.getBlock()).tryAdvancedMatcher(path.eventArgLowerAt(2))) {
+        if (!path.tryArgObject(2, new MaterialTag(location.getBlock()))) {
             return false;
         }
         return super.matches(path);
@@ -58,10 +64,10 @@ public class NPCOpensScriptEvent extends BukkitScriptEvent implements Listener {
 
     @Override
     public ObjectTag getContext(String name) {
-        switch (name) {
-            case "location": return location;
-        }
-        return super.getContext(name);
+        return switch (name) {
+            case "location" -> location;
+            default -> super.getContext(name);
+        };
     }
 
     @EventHandler

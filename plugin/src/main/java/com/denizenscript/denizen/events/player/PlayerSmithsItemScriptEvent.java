@@ -59,7 +59,7 @@ public class PlayerSmithsItemScriptEvent extends BukkitScriptEvent implements Li
 
     @Override
     public boolean matches(ScriptPath path) {
-        if (!result.tryAdvancedMatcher(path.eventArgLowerAt(2))) {
+        if (!path.tryArgObject(2, result)) {
             return false;
         }
         return super.matches(path);
@@ -101,7 +101,6 @@ public class PlayerSmithsItemScriptEvent extends BukkitScriptEvent implements Li
         this.event = event;
         result = new ItemTag(event.getInventory().getResult());
         this.player = EntityTag.getPlayerFrom(humanEntity);
-        this.cancelled = false;
         fire(event);
     }
 }

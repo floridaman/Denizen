@@ -27,7 +27,7 @@ public class EntityPatrolLeader implements Property {
             "is_patrol_leader"
     };
 
-    private EntityPatrolLeader(EntityTag entity) {
+    public EntityPatrolLeader(EntityTag entity) {
         this.entity = entity;
     }
 
@@ -43,7 +43,7 @@ public class EntityPatrolLeader implements Property {
         return "is_patrol_leader";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.is_patrol_leader>

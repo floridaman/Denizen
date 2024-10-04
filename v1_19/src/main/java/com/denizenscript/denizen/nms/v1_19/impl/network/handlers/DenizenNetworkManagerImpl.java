@@ -1,19 +1,18 @@
 package com.denizenscript.denizen.nms.v1_19.impl.network.handlers;
 
 import com.denizenscript.denizen.events.player.*;
+import com.denizenscript.denizen.nms.NMSHandler;
 import com.denizenscript.denizen.nms.abstracts.BlockLight;
 import com.denizenscript.denizen.nms.v1_19.Handler;
 import com.denizenscript.denizen.nms.v1_19.ReflectionMappingsInfo;
+import com.denizenscript.denizen.nms.v1_19.helpers.PacketHelperImpl;
 import com.denizenscript.denizen.nms.v1_19.impl.ProfileEditorImpl;
-import com.denizenscript.denizen.nms.v1_19.impl.network.packets.*;
 import com.denizenscript.denizen.nms.v1_19.impl.blocks.BlockLightImpl;
 import com.denizenscript.denizen.nms.v1_19.impl.entities.EntityFakePlayerImpl;
+import com.denizenscript.denizen.nms.v1_19.impl.network.packets.PacketOutChatImpl;
 import com.denizenscript.denizen.objects.LocationTag;
 import com.denizenscript.denizen.objects.PlayerTag;
-import com.denizenscript.denizen.scripts.commands.entity.FakeEquipCommand;
-import com.denizenscript.denizen.scripts.commands.entity.InvisibleCommand;
-import com.denizenscript.denizen.scripts.commands.entity.RenameCommand;
-import com.denizenscript.denizen.scripts.commands.entity.SneakCommand;
+import com.denizenscript.denizen.scripts.commands.entity.*;
 import com.denizenscript.denizen.scripts.commands.player.DisguiseCommand;
 import com.denizenscript.denizen.utilities.FormattedTextHelper;
 import com.denizenscript.denizen.utilities.Settings;
@@ -28,14 +27,14 @@ import com.denizenscript.denizen.utilities.packets.NetworkInterceptCodeGen;
 import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.utilities.CoreConfiguration;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
+import com.denizenscript.denizencore.utilities.ReflectionHelper;
+import com.denizenscript.denizencore.utilities.debugging.Debug;
+import com.google.common.base.Joiner;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.datafixers.util.Pair;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import com.denizenscript.denizen.nms.NMSHandler;
-import com.denizenscript.denizencore.utilities.ReflectionHelper;
-import com.denizenscript.denizencore.utilities.debugging.Debug;
 import net.md_5.bungee.api.ChatColor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
@@ -46,7 +45,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
-import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerPlayer;
@@ -61,11 +59,12 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
-import org.bukkit.craftbukkit.v1_19_R1.CraftParticle;
-import org.bukkit.craftbukkit.v1_19_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_19_R1.entity.CraftEntity;
-import org.bukkit.craftbukkit.v1_19_R1.entity.CraftPlayer;
-import org.bukkit.craftbukkit.v1_19_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_19_R3.CraftParticle;
+import org.bukkit.craftbukkit.v1_19_R3.CraftWorld;
+import org.bukkit.craftbukkit.v1_19_R3.entity.CraftEntity;
+import org.bukkit.craftbukkit.v1_19_R3.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftItemStack;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
@@ -105,10 +104,28 @@ public class DenizenNetworkManagerImpl extends Connection {
         this.player = this.packetListener.player;
     }
 
+    public static Connection getConnection(ServerPlayer player) {
+        try {
+            return (Connection) ServerGamePacketListener_ConnectionField.get(player.connection);
+        }
+        catch (Throwable ex) {
+            Debug.echoError(ex);
+            throw new RuntimeException("Failed to get connection from player due to reflection error", ex);
+        }
+    }
+
+    public static DenizenNetworkManagerImpl getNetworkManager(ServerPlayer player) {
+        return (DenizenNetworkManagerImpl) getConnection(player);
+    }
+
+    public static DenizenNetworkManagerImpl getNetworkManager(Player player) {
+        return getNetworkManager(((CraftPlayer) player).getHandle());
+    }
+
     public static void setNetworkManager(Player player) {
         ServerPlayer entityPlayer = ((CraftPlayer) player).getHandle();
         ServerGamePacketListenerImpl playerConnection = entityPlayer.connection;
-        setNetworkManager(playerConnection, new DenizenNetworkManagerImpl(entityPlayer, playerConnection.connection));
+        setNetworkManager(playerConnection, new DenizenNetworkManagerImpl(entityPlayer, getConnection(entityPlayer)));
     }
 
     public static void enableNetworkManager() {
@@ -210,7 +227,6 @@ public class DenizenNetworkManagerImpl extends Connection {
     public static Field SECTIONPOS_MULTIBLOCKCHANGE = ReflectionHelper.getFields(ClientboundSectionBlocksUpdatePacket.class).get(ReflectionMappingsInfo.ClientboundSectionBlocksUpdatePacket_sectionPos, SectionPos.class);
     public static Field OFFSETARRAY_MULTIBLOCKCHANGE = ReflectionHelper.getFields(ClientboundSectionBlocksUpdatePacket.class).get(ReflectionMappingsInfo.ClientboundSectionBlocksUpdatePacket_positions, short[].class);
     public static Field BLOCKARRAY_MULTIBLOCKCHANGE = ReflectionHelper.getFields(ClientboundSectionBlocksUpdatePacket.class).get(ReflectionMappingsInfo.ClientboundSectionBlocksUpdatePacket_states, BlockState[].class);
-    public static Field ENTITY_METADATA_LIST = ReflectionHelper.getFields(ClientboundSetEntityDataPacket.class).get(ReflectionMappingsInfo.ClientboundSetEntityDataPacket_packedItems, List.class);
 
     @Override
     public void send(Packet<?> packet) {
@@ -230,14 +246,14 @@ public class DenizenNetworkManagerImpl extends Connection {
     public void debugOutputPacket(Packet<?> packet) {
         if (packet instanceof ClientboundSetEntityDataPacket) {
             StringBuilder output = new StringBuilder(128);
-            output.append("Packet: ClientboundSetEntityDataPacket sent to ").append(player.getScoreboardName()).append(" for entity ID: ").append(((ClientboundSetEntityDataPacket) packet).getId()).append(": ");
-            List<SynchedEntityData.DataItem<?>> list = ((ClientboundSetEntityDataPacket) packet).getUnpackedData();
+            output.append("Packet: ClientboundSetEntityDataPacket sent to ").append(player.getScoreboardName()).append(" for entity ID: ").append(((ClientboundSetEntityDataPacket) packet).id()).append(": ");
+            List<SynchedEntityData.DataValue<?>> list = ((ClientboundSetEntityDataPacket) packet).packedItems();
             if (list == null) {
                 output.append("None");
             }
             else {
-                for (SynchedEntityData.DataItem<?> data : list) {
-                    output.append('[').append(data.getAccessor().getId()).append(": ").append(data.getValue()).append("], ");
+                for (SynchedEntityData.DataValue<?> data : list) {
+                    output.append('[').append(data.id()).append(": ").append(data.value()).append("], ");
                 }
             }
             doPacketOutput(output.toString());
@@ -259,11 +275,11 @@ public class DenizenNetworkManagerImpl extends Connection {
             ClientboundRemoveEntitiesPacket removePacket = (ClientboundRemoveEntitiesPacket) packet;
             doPacketOutput("Packet: ClientboundRemoveEntitiesPacket sent to " + player.getScoreboardName() + " for entities: " + removePacket.getEntityIds().stream().map(Object::toString).collect(Collectors.joining(", ")));
         }
-        else if (packet instanceof ClientboundPlayerInfoPacket) {
-            ClientboundPlayerInfoPacket playerInfoPacket = (ClientboundPlayerInfoPacket) packet;
-            doPacketOutput("Packet: ClientboundPlayerInfoPacket sent to " + player.getScoreboardName() + " of type " + playerInfoPacket.getAction() + " for player profiles: " +
-                    playerInfoPacket.getEntries().stream().map(p -> "mode=" + p.getGameMode() + "/latency=" + p.getLatency() + "/display=" + p.getDisplayName() + "/name=" + p.getProfile().getName() + "/id=" + p.getProfile().getId() + "/"
-                            + p.getProfile().getProperties().asMap().entrySet().stream().map(e -> e.getKey() + "=" + e.getValue().stream().map(v -> v.getValue() + ";" + v.getSignature()).collect(Collectors.joining(";;;"))).collect(Collectors.joining("/"))).collect(Collectors.joining(", ")));
+        else if (packet instanceof ClientboundPlayerInfoUpdatePacket) {
+            ClientboundPlayerInfoUpdatePacket playerInfoPacket = (ClientboundPlayerInfoUpdatePacket) packet;
+            doPacketOutput("Packet: ClientboundPlayerInfoPacket sent to " + player.getScoreboardName() + " of types " + playerInfoPacket.actions() + " for player profiles: " +
+                    playerInfoPacket.entries().stream().map(p -> "mode=" + p.gameMode() + "/latency=" + p.latency() + "/display=" + p.displayName() + "/name=" + p.profile().getName() + "/id=" + p.profile().getId() + "/"
+                            + p.profile().getProperties().asMap().entrySet().stream().map(e -> e.getKey() + "=" + e.getValue().stream().map(v -> v.getValue() + ";" + v.getSignature()).collect(Collectors.joining(";;;"))).collect(Collectors.joining("/"))).collect(Collectors.joining(", ")));
         }
         else {
             doPacketOutput("Packet: " + packet.getClass().getCanonicalName() + " sent to " + player.getScoreboardName());
@@ -292,6 +308,27 @@ public class DenizenNetworkManagerImpl extends Connection {
             debugOutputPacket(packet);
         }
         packetsSent++;
+        if (packet instanceof ClientboundBundlePacket bundlePacket) {
+            Iterator<Packet<ClientGamePacketListener>> iter = bundlePacket.subPackets().iterator();
+            int count = 0;
+            while (iter.hasNext()) {
+                count++;
+                if (processPacket(iter.next(), genericfuturelistener)) {
+                    iter.remove();
+                    count--;
+                }
+            }
+            if (count == 0) {
+                return;
+            }
+        }
+        else if (processPacket(packet, genericfuturelistener)) {
+            return;
+        }
+        oldManager.send(packet, genericfuturelistener);
+    }
+
+    public boolean processPacket(Packet<?> packet, PacketSendListener genericfuturelistener) {
         if (processAttachToForPacket(packet)
             || processHiddenEntitiesForPacket(packet)
             || processMirrorForPacket(packet)
@@ -307,92 +344,115 @@ public class DenizenNetworkManagerImpl extends Connection {
             if (NMSHandler.debugPackets) {
                 doPacketOutput("DENIED PACKET " + packet.getClass().getCanonicalName() + " DENIED FROM SEND TO " + player.getScoreboardName());
             }
-            return;
+            return true;
         }
-        if (PlayerReceivesPacketScriptEvent.enabled) {
+        if (PlayerReceivesPacketScriptEvent.instance.eventData.isEnabled) {
             if (PlayerReceivesPacketScriptEvent.fireFor(player.getBukkitEntity(), packet)) {
                 if (NMSHandler.debugPackets) {
                     doPacketOutput("DENIED PACKET " + packet.getClass().getCanonicalName() + " DENIED FROM SEND TO " + player.getScoreboardName() + " due to event");
                 }
-                return;
+                return true;
             }
         }
         processBlockLightForPacket(packet);
         processFakePlayerSpawnForPacket(packet);
-        oldManager.send(packet, genericfuturelistener);
+        return false;
     }
 
+    public static boolean tablistBreakOnlyOnce = false;
+
     public boolean processTablistPacket(Packet<?> packet, PacketSendListener genericfuturelistener) {
-        if (!PlayerReceivesTablistUpdateScriptEvent.enabled) {
+        if (!PlayerReceivesTablistUpdateScriptEvent.instance.eventData.isEnabled) {
             return false;
         }
-        if (packet instanceof ClientboundPlayerInfoPacket) {
-            ClientboundPlayerInfoPacket infoPacket = (ClientboundPlayerInfoPacket) packet;
-            String mode;
-            switch (infoPacket.getAction()) {
-                case ADD_PLAYER:
-                    mode = "add";
-                    break;
-                case REMOVE_PLAYER:
-                    mode = "remove";
-                    break;
-                case UPDATE_LATENCY:
-                    mode = "update_latency";
-                    break;
-                case UPDATE_GAME_MODE:
-                    mode = "update_gamemode";
-                    break;
-                case UPDATE_DISPLAY_NAME:
-                    mode = "update_display";
-                    break;
-                default:
-                    return false;
+        if (packet instanceof ClientboundPlayerInfoUpdatePacket) {
+            ClientboundPlayerInfoUpdatePacket infoPacket = (ClientboundPlayerInfoUpdatePacket) packet;
+            String mode = "";
+            for (ClientboundPlayerInfoUpdatePacket.Action action : infoPacket.actions()) {
+                switch (action) {
+                    case ADD_PLAYER:
+                        mode = "add";
+                        break;
+                    case UPDATE_LATENCY:
+                        mode = mode.isEmpty() ? "update_latency" : mode + "|update_latency";
+                        break;
+                    case UPDATE_GAME_MODE:
+                        mode = mode.isEmpty() ? "update_gamemode" : mode + "|update_gamemode";
+                        break;
+                    case UPDATE_DISPLAY_NAME:
+                        mode = mode.isEmpty() ? "update_display" : mode + "|update_display";
+                        break;
+                    case UPDATE_LISTED:
+                        mode = mode.isEmpty() ? "update_listed" : mode + "|update_listed";
+                        break;
+                    case INITIALIZE_CHAT:
+                        mode = mode.isEmpty() ? "initialize_chat" : mode + "|initialize_chat";
+                    default:
+                        break;
+                }
+            }
+            if (mode.isEmpty()) {
+                if (!tablistBreakOnlyOnce) {
+                    tablistBreakOnlyOnce = true;
+                    Debug.echoError("Tablist packet processing failed: unknown action " + Joiner.on(", ").join(infoPacket.actions()));
+                }
+                return false;
             }
             boolean isOverriding = false;
-            for (ClientboundPlayerInfoPacket.PlayerUpdate update : infoPacket.getEntries()) {
-                GameProfile profile = update.getProfile();
+            for (ClientboundPlayerInfoUpdatePacket.Entry update : infoPacket.entries()) {
+                GameProfile profile = update.profile();
                 String texture = null, signature = null;
                 if (profile.getProperties().containsKey("textures")) {
                     Property property = profile.getProperties().get("textures").stream().findFirst().get();
                     texture = property.getValue();
                     signature = property.getSignature();
                 }
-                String modeText = update.getGameMode() == null ? null : update.getGameMode().name();
-                PlayerReceivesTablistUpdateScriptEvent.TabPacketData data = new PlayerReceivesTablistUpdateScriptEvent.TabPacketData(mode, profile.getId(), profile.getName(),
-                        update.getDisplayName() == null ? null : FormattedTextHelper.stringify(Handler.componentToSpigot(update.getDisplayName())), modeText, texture, signature, update.getLatency());
+                String modeText = update.gameMode() == null ? null : update.gameMode().name();
+                PlayerReceivesTablistUpdateScriptEvent.TabPacketData data = new PlayerReceivesTablistUpdateScriptEvent.TabPacketData(mode, profile.getId(), update.listed(), profile.getName(),
+                        update.displayName() == null ? null : FormattedTextHelper.stringify(Handler.componentToSpigot(update.displayName())), modeText, texture, signature, update.latency());
                 PlayerReceivesTablistUpdateScriptEvent.fire(player.getBukkitEntity(), data);
                 if (data.modified) {
                     if (!isOverriding) {
                         isOverriding = true;
-                        ClientboundPlayerInfoPacket priorsPacket = new ClientboundPlayerInfoPacket(infoPacket.getAction());
-                        for (ClientboundPlayerInfoPacket.PlayerUpdate priorUpdate : infoPacket.getEntries()) {
+                        for (ClientboundPlayerInfoUpdatePacket.Entry priorUpdate : infoPacket.entries()) {
                             if (priorUpdate == update) {
                                 break;
                             }
-                            priorsPacket.getEntries().add(priorUpdate);
-                        }
-                        if (!priorsPacket.getEntries().isEmpty()) {
-                            oldManager.send(priorsPacket, genericfuturelistener);
+                            oldManager.send(ProfileEditorImpl.createInfoPacket(infoPacket.actions(), Collections.singletonList(priorUpdate)));
                         }
                     }
                     if (!data.cancelled) {
-                        ClientboundPlayerInfoPacket newPacket = new ClientboundPlayerInfoPacket(infoPacket.getAction());
                         GameProfile newProfile = new GameProfile(data.id, data.name);
                         if (data.texture != null) {
                             newProfile.getProperties().put("textures", new Property("textures", data.texture, data.signature));
                         }
-                        newPacket.getEntries().add(new ClientboundPlayerInfoPacket.PlayerUpdate(newProfile, data.latency, data.gamemode == null ? null : GameType.byName(CoreUtilities.toLowerCase(data.gamemode)),
-                                data.display == null ? null : Handler.componentToNMS(FormattedTextHelper.parse(data.display, ChatColor.WHITE)), update.getProfilePublicKey()));
-                        oldManager.send(newPacket, genericfuturelistener);
+                        ClientboundPlayerInfoUpdatePacket.Entry entry = new ClientboundPlayerInfoUpdatePacket.Entry(newProfile.getId(), newProfile, data.isListed, data.latency, data.gamemode == null ? null : GameType.byName(CoreUtilities.toLowerCase(data.gamemode)),
+                                data.display == null ? null : Handler.componentToNMS(FormattedTextHelper.parse(data.display, ChatColor.WHITE)), update.chatSession());
+                        oldManager.send(ProfileEditorImpl.createInfoPacket(infoPacket.actions(), Collections.singletonList(entry)), genericfuturelistener);
                     }
                 }
                 else if (isOverriding) {
-                    ClientboundPlayerInfoPacket newPacket = new ClientboundPlayerInfoPacket(infoPacket.getAction());
-                    newPacket.getEntries().add(update);
-                    oldManager.send(newPacket, genericfuturelistener);
+                    oldManager.send(ProfileEditorImpl.createInfoPacket(infoPacket.actions(), Collections.singletonList(update)), genericfuturelistener);
                 }
             }
             return isOverriding;
+        }
+        else if (packet instanceof ClientboundPlayerInfoRemovePacket) {
+            ClientboundPlayerInfoRemovePacket removePacket = (ClientboundPlayerInfoRemovePacket) packet;
+            boolean modified = false;
+            List<UUID> altIds = new ArrayList<>(((ClientboundPlayerInfoRemovePacket) packet).profileIds());
+            for (UUID id : ((ClientboundPlayerInfoRemovePacket) packet).profileIds()) {
+                PlayerReceivesTablistUpdateScriptEvent.TabPacketData data = new PlayerReceivesTablistUpdateScriptEvent.TabPacketData("remove", id, false, null, null, null, null, null, 0);
+                PlayerReceivesTablistUpdateScriptEvent.fire(player.getBukkitEntity(), data);
+                if (data.modified && data.cancelled) {
+                    modified = true;
+                    altIds.remove(id);
+                }
+            }
+            if (modified) {
+                oldManager.send(new ClientboundPlayerInfoRemovePacket(altIds), genericfuturelistener);
+                return true;
+            }
         }
         return false;
     }
@@ -425,12 +485,12 @@ public class DenizenNetworkManagerImpl extends Connection {
     }
 
     public boolean processSoundPacket(Packet<?> packet) {
-        if (!PlayerHearsSoundScriptEvent.enabled) {
+        if (!PlayerHearsSoundScriptEvent.instance.eventData.isEnabled) {
             return false;
         }
         if (packet instanceof ClientboundSoundPacket) {
             ClientboundSoundPacket spacket = (ClientboundSoundPacket) packet;
-            return PlayerHearsSoundScriptEvent.instance.run(player.getBukkitEntity(), spacket.getSound().getLocation().getPath(), spacket.getSource().name(),
+            return PlayerHearsSoundScriptEvent.instance.run(player.getBukkitEntity(), spacket.getSound().value().getLocation().getPath(), spacket.getSource().name(),
                     false, null, new Location(player.getBukkitEntity().getWorld(), spacket.getX(), spacket.getY(), spacket.getZ()), spacket.getVolume(), spacket.getPitch());
         }
         else if (packet instanceof ClientboundSoundEntityPacket) {
@@ -439,13 +499,8 @@ public class DenizenNetworkManagerImpl extends Connection {
             if (entity == null) {
                 return false;
             }
-            return PlayerHearsSoundScriptEvent.instance.run(player.getBukkitEntity(), spacket.getSound().getLocation().getPath(), spacket.getSource().name(),
+            return PlayerHearsSoundScriptEvent.instance.run(player.getBukkitEntity(), spacket.getSound().value().getLocation().getPath(), spacket.getSource().name(),
                     false, entity.getBukkitEntity(), null, spacket.getVolume(), spacket.getPitch());
-        }
-        else if (packet instanceof ClientboundCustomSoundPacket) {
-            ClientboundCustomSoundPacket spacket = (ClientboundCustomSoundPacket) packet;
-            return PlayerHearsSoundScriptEvent.instance.run(player.getBukkitEntity(), spacket.getName().toString(), spacket.getSource().name(),
-                    true, null, new Location(player.getBukkitEntity().getWorld(), spacket.getX(), spacket.getY(), spacket.getZ()), spacket.getVolume(), spacket.getPitch());
         }
         return false;
     }
@@ -622,87 +677,126 @@ public class DenizenNetworkManagerImpl extends Connection {
             return false;
         }
         try {
-            int ider = -1;
-            if (packet instanceof ClientboundSetEntityDataPacket) {
-                ider = ((ClientboundSetEntityDataPacket) packet).getId();
+            int entityID = -1;
+            if (packet instanceof ClientboundSetEntityDataPacket entityDataPacket) {
+                entityID = entityDataPacket.id();
             }
-            if (packet instanceof ClientboundUpdateAttributesPacket) {
-                ider = ((ClientboundUpdateAttributesPacket) packet).getEntityId();
+            if (packet instanceof ClientboundUpdateAttributesPacket updateAttributesPacket) {
+                entityID = updateAttributesPacket.getEntityId();
             }
-            if (packet instanceof ClientboundAddPlayerPacket) {
-                ider = ((ClientboundAddPlayerPacket) packet).getEntityId();
+            if (packet instanceof ClientboundAddPlayerPacket addPlayerPacket) {
+                entityID = addPlayerPacket.getEntityId();
             }
-            else if (packet instanceof ClientboundAddEntityPacket) {
-                ider = ((ClientboundAddEntityPacket) packet).getId();
+            else if (packet instanceof ClientboundAddEntityPacket addEntityPacket) {
+                entityID = addEntityPacket.getId();
             }
-            if (ider != -1) {
-                Entity e = player.getLevel().getEntity(ider);
-                if (e == null) {
-                    return false;
+            else if (packet instanceof ClientboundTeleportEntityPacket teleportEntityPacket) {
+                entityID = teleportEntityPacket.getId();
+            }
+            else if (packet instanceof ClientboundMoveEntityPacket moveEntityPacket) {
+                Entity e = moveEntityPacket.getEntity(player.level);
+                if (e != null) {
+                    entityID = e.getId();
                 }
-                HashMap<UUID, DisguiseCommand.TrackedDisguise> playerMap = DisguiseCommand.disguises.get(e.getUUID());
-                if (playerMap == null) {
-                    return false;
-                }
-                DisguiseCommand.TrackedDisguise disguise = playerMap.get(player.getUUID());
+            }
+            if (entityID == -1) {
+                return false;
+            }
+            Entity entity = player.getLevel().getEntity(entityID);
+            if (entity == null) {
+                return false;
+            }
+            HashMap<UUID, DisguiseCommand.TrackedDisguise> playerMap = DisguiseCommand.disguises.get(entity.getUUID());
+            if (playerMap == null) {
+                return false;
+            }
+            DisguiseCommand.TrackedDisguise disguise = playerMap.get(player.getUUID());
+            if (disguise == null) {
+                disguise = playerMap.get(null);
                 if (disguise == null) {
-                    disguise = playerMap.get(null);
-                    if (disguise == null) {
+                    return false;
+                }
+            }
+            if (!disguise.isActive) {
+                return false;
+            }
+            if (NMSHandler.debugPackets) {
+                doPacketOutput("DISGUISED packet " + packet.getClass().getName() + " for entity " + entityID + " to player " + player.getScoreboardName());
+            }
+            if (packet instanceof ClientboundSetEntityDataPacket metadataPacket) {
+                if (entityID == player.getId()) {
+                    if (!disguise.shouldFake) {
                         return false;
                     }
-                }
-                if (!disguise.isActive) {
-                    return false;
-                }
-                if (NMSHandler.debugPackets) {
-                    doPacketOutput("DISGUISED packet " + packet.getClass().getName() + " for entity " + ider + " to player " + player.getScoreboardName());
-                }
-                if (packet instanceof ClientboundSetEntityDataPacket) {
-                    ClientboundSetEntityDataPacket metadataPacket = (ClientboundSetEntityDataPacket) packet;
-                    if (e.getId() == player.getId()) {
-                        if (!disguise.shouldFake) {
-                            return false;
-                        }
-                        List<SynchedEntityData.DataItem<?>> data = metadataPacket.getUnpackedData();
-                        for (SynchedEntityData.DataItem item : data) {
-                            EntityDataAccessor<?> watcherObject = item.getAccessor();
-                            int watcherId = watcherObject.getId();
-                            if (watcherId == 0) { // Entity flags
-                                ClientboundSetEntityDataPacket altPacket = new ClientboundSetEntityDataPacket(copyPacket(metadataPacket));
-                                data = new ArrayList<>(data);
-                                ENTITY_METADATA_LIST.set(altPacket, data);
-                                data.remove(item);
-                                byte flags = (byte) item.getValue();
-                                flags |= 0x20; // Invisible flag
-                                data.add(new SynchedEntityData.DataItem(watcherObject, flags));
-                                ClientboundSetEntityDataPacket updatedPacket = getModifiedMetadataFor(altPacket);
-                                oldManager.send(updatedPacket == null ? altPacket : updatedPacket, genericfuturelistener);
-                                return true;
-                            }
+                    List<SynchedEntityData.DataValue<?>> data = metadataPacket.packedItems();
+                    for (SynchedEntityData.DataValue<?> dataValue : data) {
+                        if (dataValue.id() == 0) { // Entity flags
+                            data = new ArrayList<>(data);
+                            data.remove(dataValue);
+                            byte flags = (byte) dataValue.value();
+                            flags |= 0x20; // Invisible flag
+                            data.add(new SynchedEntityData.DataValue(dataValue.id(), dataValue.serializer(), flags));
+                            ClientboundSetEntityDataPacket altPacket = new ClientboundSetEntityDataPacket(metadataPacket.id(), data);
+                            ClientboundSetEntityDataPacket updatedPacket = getModifiedMetadataFor(altPacket);
+                            oldManager.send(updatedPacket == null ? altPacket : updatedPacket, genericfuturelistener);
+                            return true;
                         }
                     }
-                    else {
-                        ClientboundSetEntityDataPacket altPacket = new ClientboundSetEntityDataPacket(e.getId(), ((CraftEntity) disguise.toOthers.entity.entity).getHandle().getEntityData(), true);
-                        oldManager.send(altPacket, genericfuturelistener);
+                }
+                else {
+                    List<SynchedEntityData.DataValue<?>> data = ((CraftEntity) disguise.toOthers.entity.entity).getHandle().getEntityData().getNonDefaultValues();
+                    if (data != null) {
+                        oldManager.send(new ClientboundSetEntityDataPacket(entityID, data), genericfuturelistener);
+                    }
+                    return true;
+                }
+                return false;
+            }
+            else if (packet instanceof ClientboundUpdateAttributesPacket) {
+                FakeEntity fake = entityID == player.getId() ? disguise.fakeToSelf : disguise.toOthers;
+                if (fake == null) {
+                    return false;
+                }
+                if (fake.entity.entity instanceof LivingEntity) {
+                    return false;
+                }
+                return true; // Non-living don't have attributes
+            }
+            else if (packet instanceof ClientboundTeleportEntityPacket) {
+                if (disguise.as.getBukkitEntityType() == EntityType.ENDER_DRAGON) {
+                    ClientboundTeleportEntityPacket pOld = (ClientboundTeleportEntityPacket) packet;
+                    ClientboundTeleportEntityPacket pNew = new ClientboundTeleportEntityPacket(entity);
+                    ENTITY_ID_PACKTELENT.setInt(pNew, pOld.getId());
+                    POS_X_PACKTELENT.setDouble(pNew, pOld.getX());
+                    POS_Y_PACKTELENT.setDouble(pNew, pOld.getY());
+                    POS_Z_PACKTELENT.setDouble(pNew, pOld.getZ());
+                    YAW_PACKTELENT.setByte(pNew, EntityAttachmentHelper.adaptedCompressedAngle(pOld.getyRot(), 180));
+                    PITCH_PACKTELENT.setByte(pNew, pOld.getxRot());
+                    oldManager.send(pNew, genericfuturelistener);
+                    return true;
+                }
+            }
+            else if (packet instanceof ClientboundMoveEntityPacket) {
+                if (disguise.as.getBukkitEntityType() == EntityType.ENDER_DRAGON) {
+                    ClientboundMoveEntityPacket pOld = (ClientboundMoveEntityPacket) packet;
+                    ClientboundMoveEntityPacket pNew = null;
+                    if (packet instanceof ClientboundMoveEntityPacket.Rot) {
+                        pNew = new ClientboundMoveEntityPacket.Rot(entityID, EntityAttachmentHelper.adaptedCompressedAngle(pOld.getyRot(), 180), pOld.getxRot(), pOld.isOnGround());
+                    }
+                    else if (packet instanceof ClientboundMoveEntityPacket.PosRot) {
+                        pNew = new ClientboundMoveEntityPacket.PosRot(entityID, pOld.getXa(), pOld.getYa(), pOld.getZa(), EntityAttachmentHelper.adaptedCompressedAngle(pOld.getyRot(), 180), pOld.getxRot(), pOld.isOnGround());
+                    }
+                    if (pNew != null) {
+                        oldManager.send(pNew, genericfuturelistener);
                         return true;
                     }
                     return false;
                 }
-                if (packet instanceof ClientboundUpdateAttributesPacket) {
-                    FakeEntity fake = ider == player.getId() ? disguise.fakeToSelf : disguise.toOthers;
-                    if (fake == null) {
-                        return false;
-                    }
-                    if (fake.entity.entity instanceof LivingEntity) {
-                        return false;
-                    }
-                    return true; // Non-living don't have attributes
-                }
-                antiDuplicate = true;
-                disguise.sendTo(Collections.singletonList(new PlayerTag(player.getBukkitEntity())));
-                antiDuplicate = false;
-                return true;
             }
+            antiDuplicate = true;
+            disguise.sendTo(List.of(new PlayerTag(player.getUUID())));
+            antiDuplicate = false;
+            return true;
         }
         catch (Throwable ex) {
             antiDuplicate = false;
@@ -712,64 +806,44 @@ public class DenizenNetworkManagerImpl extends Connection {
     }
 
     public ClientboundSetEntityDataPacket getModifiedMetadataFor(ClientboundSetEntityDataPacket metadataPacket) {
-        if (!RenameCommand.hasAnyDynamicRenames() && SneakCommand.forceSetSneak.isEmpty() && InvisibleCommand.invisibleEntities.isEmpty()) {
+        if (!RenameCommand.hasAnyDynamicRenames() && SneakCommand.forceSetSneak.isEmpty() && InvisibleCommand.helper.noOverrides() && GlowCommand.helper.noOverrides()) {
             return null;
         }
         try {
-            int eid = metadataPacket.getId();
-            Entity ent = player.level.getEntity(eid);
-            if (ent == null) {
+            Entity entity = player.level.getEntity(metadataPacket.id());
+            if (entity == null) {
                 return null; // If it doesn't exist on-server, it's definitely not relevant, so move on
             }
-            String nameToApply = RenameCommand.getCustomNameFor(ent.getUUID(), player.getBukkitEntity(), false);
-            Boolean forceSneak = SneakCommand.shouldSneak(ent.getUUID(), player.getUUID());
-            Boolean isInvisible = InvisibleCommand.isInvisible(ent.getBukkitEntity(), player.getUUID(), true);
-            if (nameToApply == null && forceSneak == null && isInvisible == null) {
+            String nameToApply = RenameCommand.getCustomNameFor(entity.getUUID(), player.getBukkitEntity(), false);
+            Boolean forceSneak = SneakCommand.shouldSneak(entity.getUUID(), player.getUUID());
+            Boolean isInvisible = InvisibleCommand.helper.getState(entity.getBukkitEntity(), player.getUUID(), true);
+            Boolean isGlowing = GlowCommand.helper.getState(entity.getBukkitEntity(), player.getUUID(), true);
+            boolean shouldModifyFlags = isInvisible != null || forceSneak != null || isGlowing != null;
+            if (nameToApply == null && !shouldModifyFlags) {
                 return null;
             }
-            List<SynchedEntityData.DataItem<?>> data = new ArrayList<>(metadataPacket.getUnpackedData());
-            boolean any = false;
-            for (int i = 0; i < data.size(); i++) {
-                SynchedEntityData.DataItem<?> item = data.get(i);
-                EntityDataAccessor<?> watcherObject = item.getAccessor();
-                int watcherId = watcherObject.getId();
-                if (watcherId == 0 && (forceSneak != null || isInvisible != null)) { // 0: Entity flags
-                    byte val = (Byte) item.getValue();
-                    if (forceSneak != null) {
-                        if (forceSneak) {
-                            val |= 0x02; // 8: Crouching
-                        }
-                        else {
-                            val &= ~0x02;
-                        }
-                    }
-                    if (isInvisible != null) {
-                        if (isInvisible) {
-                            val |= 0x20;
-                        }
-                        else {
-                            val &= ~0x20;
-                        }
-                    }
-                    data.set(i, new SynchedEntityData.DataItem(watcherObject, val));
-                    any = true;
+            List<SynchedEntityData.DataValue<?>> data = new ArrayList<>(metadataPacket.packedItems().size());
+            Byte currentFlags = null;
+            for (SynchedEntityData.DataValue<?> dataValue : metadataPacket.packedItems()) {
+                if (dataValue.id() == 0 && shouldModifyFlags) { // 0: Entity Flags
+                    currentFlags = (Byte) dataValue.value();
                 }
-                else if (watcherId == 2 && nameToApply != null) { // 2: Custom name metadata
-                    Optional<Component> name = Optional.of(Handler.componentToNMS(FormattedTextHelper.parse(nameToApply, ChatColor.WHITE)));
-                    data.set(i, new SynchedEntityData.DataItem(watcherObject, name));
-                    any = true;
-                }
-                else if (watcherId == 3 && nameToApply != null) { // 3: custom name visible metadata
-                    data.set(i, new SynchedEntityData.DataItem(watcherObject, true));
-                    any = true;
+                else if (nameToApply == null || (dataValue.id() != 2 && dataValue.id() != 3)) { // 2 and 3: Custom name and custom name visible
+                    data.add(dataValue);
                 }
             }
-            if (!any) {
-                return null;
+            if (shouldModifyFlags) {
+                byte flags = currentFlags == null ? entity.getEntityData().get(PacketHelperImpl.ENTITY_DATA_ACCESSOR_FLAGS) : currentFlags;
+                flags = applyEntityDataFlag(flags, forceSneak, 0x02);
+                flags = applyEntityDataFlag(flags, isInvisible, 0x20);
+                flags = applyEntityDataFlag(flags, isGlowing, 0x40);
+                data.add(SynchedEntityData.DataValue.create(PacketHelperImpl.ENTITY_DATA_ACCESSOR_FLAGS, flags));
             }
-            ClientboundSetEntityDataPacket altPacket = new ClientboundSetEntityDataPacket(copyPacket(metadataPacket));
-            ENTITY_METADATA_LIST.set(altPacket, data);
-            return altPacket;
+            if (nameToApply != null) {
+                data.add(SynchedEntityData.DataValue.create(PacketHelperImpl.ENTITY_DATA_ACCESSOR_CUSTOM_NAME, Optional.of(Handler.componentToNMS(FormattedTextHelper.parse(nameToApply, ChatColor.WHITE)))));
+                data.add(SynchedEntityData.DataValue.create(PacketHelperImpl.ENTITY_DATA_ACCESSOR_CUSTOM_NAME_VISIBLE, true));
+            }
+            return new ClientboundSetEntityDataPacket(metadataPacket.id(), data);
         }
         catch (Throwable ex) {
             Debug.echoError(ex);
@@ -777,11 +851,18 @@ public class DenizenNetworkManagerImpl extends Connection {
         }
     }
 
+    public byte applyEntityDataFlag(byte currentFlags, Boolean value, int flag) {
+        if (value == null) {
+            return currentFlags;
+        }
+        return (byte) (value ? currentFlags | flag : currentFlags & ~flag);
+    }
+
     public boolean processMetadataChangesForPacket(Packet<?> packet, PacketSendListener genericfuturelistener) {
-        if (!(packet instanceof ClientboundSetEntityDataPacket)) {
+        if (!(packet instanceof ClientboundSetEntityDataPacket entityDataPacket)) {
             return false;
         }
-        ClientboundSetEntityDataPacket altPacket = getModifiedMetadataFor((ClientboundSetEntityDataPacket) packet);
+        ClientboundSetEntityDataPacket altPacket = getModifiedMetadataFor(entityDataPacket);
         if (altPacket == null) {
             return false;
         }
@@ -812,8 +893,8 @@ public class DenizenNetworkManagerImpl extends Connection {
                         }
                         return;
                     }
-                    if (att.positionalOffset != null && (packet instanceof ClientboundMoveEntityPacket.Pos || packet instanceof ClientboundMoveEntityPacket.PosRot)) {
-                        boolean isRotate = packet instanceof ClientboundMoveEntityPacket.PosRot;
+                    if (att.positionalOffset != null) {
+                        boolean isRotate = packet instanceof ClientboundMoveEntityPacket.PosRot || packet instanceof ClientboundMoveEntityPacket.Rot;
                         byte yaw, pitch;
                         if (att.noRotate) {
                             Entity attachedEntity = ((CraftEntity) att.attached.getBukkitEntity()).getHandle();
@@ -849,7 +930,7 @@ public class DenizenNetworkManagerImpl extends Connection {
                         int offX = (int) (moveNeeded.getX() * (32 * 128));
                         int offY = (int) (moveNeeded.getY() * (32 * 128));
                         int offZ = (int) (moveNeeded.getZ() * (32 * 128));
-                        if (forceTele || offX < Short.MIN_VALUE || offX > Short.MAX_VALUE
+                        if ((isRotate && att.offsetRelative) || forceTele || offX < Short.MIN_VALUE || offX > Short.MAX_VALUE
                                 || offY < Short.MIN_VALUE || offY > Short.MAX_VALUE
                                 || offZ < Short.MIN_VALUE || offZ > Short.MAX_VALUE) {
                             ClientboundTeleportEntityPacket newTeleportPacket = new ClientboundTeleportEntityPacket(e);
@@ -890,6 +971,35 @@ public class DenizenNetworkManagerImpl extends Connection {
         if (e.passengers != null && !e.passengers.isEmpty()) {
             for (Entity ent : e.passengers) {
                 tryProcessMovePacketForAttach(packet, ent);
+            }
+        }
+    }
+
+    public void tryProcessRotateHeadPacketForAttach(ClientboundRotateHeadPacket packet, Entity e) throws IllegalAccessException {
+        EntityAttachmentHelper.EntityAttachedToMap attList = EntityAttachmentHelper.toEntityToData.get(e.getUUID());
+        if (attList != null) {
+            for (EntityAttachmentHelper.PlayerAttachMap attMap : attList.attachedToMap.values()) {
+                EntityAttachmentHelper.AttachmentData att = attMap.getAttachment(player.getUUID());
+                if (attMap.attached.isValid() && att != null) {
+                    byte yaw = packet.getYHeadRot();
+                    Entity attachedEntity = ((CraftEntity) att.attached.getBukkitEntity()).getHandle();
+                    if (att.positionalOffset != null) {
+                        if (att.noRotate) {
+                            yaw = EntityAttachmentHelper.compressAngle(attachedEntity.getYRot());
+                        }
+                        yaw = EntityAttachmentHelper.adaptedCompressedAngle(yaw, att.positionalOffset.getYaw());
+                    }
+                    ClientboundRotateHeadPacket pNew = new ClientboundRotateHeadPacket(attachedEntity, yaw);
+                    if (NMSHandler.debugPackets) {
+                        doPacketOutput("Head Rotation Packet: " + pNew.getClass().getCanonicalName() + " for " + att.attached.getUUID() + " sent to " + player.getScoreboardName());
+                    }
+                    oldManager.send(pNew);
+                }
+            }
+        }
+        if (e.passengers != null && !e.passengers.isEmpty()) {
+            for (Entity ent : e.passengers) {
+                tryProcessRotateHeadPacketForAttach(packet, ent);
             }
         }
     }
@@ -972,36 +1082,44 @@ public class DenizenNetworkManagerImpl extends Connection {
             return false;
         }
         try {
-            if (packet instanceof ClientboundMoveEntityPacket) {
-                Entity e = ((ClientboundMoveEntityPacket) packet).getEntity(player.getLevel());
+            if (packet instanceof ClientboundMoveEntityPacket moveEntityPacket) {
+                Entity e = moveEntityPacket.getEntity(player.getLevel());
                 if (e == null) {
                     return false;
                 }
                 if (!e.isPassenger()) {
-                    tryProcessMovePacketForAttach((ClientboundMoveEntityPacket) packet, e);
+                    tryProcessMovePacketForAttach(moveEntityPacket, e);
                 }
                 return EntityAttachmentHelper.denyOriginalPacketSend(player.getUUID(), e.getUUID());
             }
-            else if (packet instanceof ClientboundSetEntityMotionPacket) {
-                int ider = ((ClientboundSetEntityMotionPacket) packet).getId();
+            else if (packet instanceof ClientboundRotateHeadPacket rotateHeadPacket) {
+                Entity e = rotateHeadPacket.getEntity(player.getLevel());
+                if (e == null) {
+                    return false;
+                }
+                tryProcessRotateHeadPacketForAttach(rotateHeadPacket, e);
+                return EntityAttachmentHelper.denyOriginalPacketSend(player.getUUID(), e.getUUID());
+            }
+            else if (packet instanceof ClientboundSetEntityMotionPacket setEntityMotionPacket) {
+                int ider = setEntityMotionPacket.getId();
                 Entity e = player.getLevel().getEntity(ider);
                 if (e == null) {
                     return false;
                 }
-                tryProcessVelocityPacketForAttach((ClientboundSetEntityMotionPacket) packet, e);
+                tryProcessVelocityPacketForAttach(setEntityMotionPacket, e);
                 return EntityAttachmentHelper.denyOriginalPacketSend(player.getUUID(), e.getUUID());
             }
-            else if (packet instanceof ClientboundTeleportEntityPacket) {
-                int ider = ((ClientboundTeleportEntityPacket) packet).getId();
+            else if (packet instanceof ClientboundTeleportEntityPacket teleportEntityPacket) {
+                int ider = teleportEntityPacket.getId();
                 Entity e = player.getLevel().getEntity(ider);
                 if (e == null) {
                     return false;
                 }
-                tryProcessTeleportPacketForAttach((ClientboundTeleportEntityPacket) packet, e, VECTOR_ZERO);
+                tryProcessTeleportPacketForAttach(teleportEntityPacket, e, VECTOR_ZERO);
                 return EntityAttachmentHelper.denyOriginalPacketSend(player.getUUID(), e.getUUID());
             }
-            else if (packet instanceof ClientboundRemoveEntitiesPacket) {
-                for (int id : ((ClientboundRemoveEntitiesPacket) packet).getEntityIds()) {
+            else if (packet instanceof ClientboundRemoveEntitiesPacket removeEntitiesPacket) {
+                for (int id : removeEntitiesPacket.getEntityIds()) {
                     Entity e = player.getLevel().getEntity(id);
                     if (e != null) {
                         EntityAttachmentHelper.EntityAttachedToMap attList = EntityAttachmentHelper.toEntityToData.get(e.getUUID());
@@ -1047,7 +1165,7 @@ public class DenizenNetworkManagerImpl extends Connection {
                 e = ((ClientboundMoveEntityPacket) packet).getEntity(player.getLevel());
             }
             else if (packet instanceof ClientboundSetEntityDataPacket) {
-                ider = ((ClientboundSetEntityDataPacket) packet).getId();
+                ider = ((ClientboundSetEntityDataPacket) packet).id();
             }
             else if (packet instanceof ClientboundSetEntityMotionPacket) {
                 ider = ((ClientboundSetEntityMotionPacket) packet).getId();
@@ -1083,17 +1201,15 @@ public class DenizenNetworkManagerImpl extends Connection {
     public void processFakePlayerSpawn(Entity entity) {
         if (entity instanceof EntityFakePlayerImpl) {
             final EntityFakePlayerImpl fakePlayer = (EntityFakePlayerImpl) entity;
-            send(new ClientboundPlayerInfoPacket(ClientboundPlayerInfoPacket.Action.ADD_PLAYER, fakePlayer));
+            send(new ClientboundPlayerInfoUpdatePacket(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER, fakePlayer));
             Bukkit.getScheduler().runTaskLater(NMSHandler.getJavaPlugin(),
-                    () -> send(new ClientboundPlayerInfoPacket(ClientboundPlayerInfoPacket.Action.REMOVE_PLAYER, fakePlayer)), 5);
+                    () -> send(new ClientboundPlayerInfoRemovePacket(Collections.singletonList(fakePlayer.getUUID()))), 5);
         }
     }
 
     public boolean processMirrorForPacket(Packet<?> packet) {
-        if (packet instanceof ClientboundPlayerInfoPacket) {
-            ClientboundPlayerInfoPacket playerInfo = (ClientboundPlayerInfoPacket) packet;
-            ProfileEditorImpl.updatePlayerProfiles(playerInfo);
-            if (!ProfileEditorImpl.handleAlteredProfiles(playerInfo, this)) {
+        if (packet instanceof ClientboundPlayerInfoUpdatePacket playerInfoUpdatePacket) {
+            if (!ProfileEditorImpl.handleAlteredProfiles(playerInfoUpdatePacket, this)) {
                 return true;
             }
         }
@@ -1104,15 +1220,15 @@ public class DenizenNetworkManagerImpl extends Connection {
         if (DenizenPacketHandler.instance.shouldInterceptChatPacket()) {
             PacketOutChatImpl packetHelper = null;
             boolean isActionbar = false;
-            if (packet instanceof ClientboundSystemChatPacket) {
-                isActionbar = ((ClientboundSystemChatPacket) packet).overlay();
-                if (((ClientboundSystemChatPacket) packet).content() == null) { // Makes no sense but this can be null in weird edge cases
+            if (packet instanceof ClientboundSystemChatPacket chatPacket) {
+                isActionbar = chatPacket.overlay();
+                packetHelper = new PacketOutChatImpl(chatPacket);
+                if (packetHelper.rawJson == null) { // Makes no sense but this can be null in weird edge cases
                     return false;
                 }
-                packetHelper = new PacketOutChatImpl((ClientboundSystemChatPacket) packet);
             }
-            else if (packet instanceof ClientboundPlayerChatPacket) {
-                packetHelper = new PacketOutChatImpl((ClientboundPlayerChatPacket) packet);
+            else if (packet instanceof ClientboundPlayerChatPacket playerChatPacket) {
+                packetHelper = new PacketOutChatImpl(playerChatPacket);
             }
             if (packetHelper != null) {
                 PlayerReceivesMessageScriptEvent result = DenizenPacketHandler.instance.sendPacket(player.getBukkitEntity(), packetHelper);
@@ -1126,9 +1242,6 @@ public class DenizenNetworkManagerImpl extends Connection {
                     }
                 }
             }
-        }
-        if (packet instanceof ClientboundSetEntityDataPacket && DenizenPacketHandler.instance.shouldInterceptMetadata()) {
-            return DenizenPacketHandler.instance.sendPacket(player.getBukkitEntity(), new PacketOutEntityMetadataImpl((ClientboundSetEntityDataPacket) packet));
         }
         return false;
     }
@@ -1316,17 +1429,13 @@ public class DenizenNetworkManagerImpl extends Connection {
         return oldManager.getAverageSentPackets();
     }
 
-    @Override
-    public SocketAddress getRawAddress() {
-        return oldManager.getRawAddress();
-    }
-
     //////////////////////////////////
     //// Reflection Methods/Fields
     ///////////
 
     private static final Field protocolDirectionField = ReflectionHelper.getFields(Connection.class).get(ReflectionMappingsInfo.Connection_receiving, PacketFlow.class);
-    private static final MethodHandle networkManagerField = ReflectionHelper.getFinalSetter(ServerGamePacketListenerImpl.class, ReflectionMappingsInfo.ServerGamePacketListenerImpl_connection);
+    private static final Field ServerGamePacketListener_ConnectionField = ReflectionHelper.getFields(ServerGamePacketListenerImpl.class).get(ReflectionMappingsInfo.ServerGamePacketListenerImpl_connection);
+    private static final MethodHandle ServerGamePacketListener_ConnectionSetter = ReflectionHelper.getFinalSetter(ServerGamePacketListenerImpl.class, ReflectionMappingsInfo.ServerGamePacketListenerImpl_connection);
 
     private static PacketFlow getProtocolDirection(Connection networkManager) {
         PacketFlow direction = null;
@@ -1341,7 +1450,7 @@ public class DenizenNetworkManagerImpl extends Connection {
 
     private static void setNetworkManager(ServerGamePacketListenerImpl playerConnection, Connection networkManager) {
         try {
-            networkManagerField.invoke(playerConnection, networkManager);
+            ServerGamePacketListener_ConnectionSetter.invoke(playerConnection, networkManager);
         }
         catch (Throwable ex) {
             Debug.echoError(ex);

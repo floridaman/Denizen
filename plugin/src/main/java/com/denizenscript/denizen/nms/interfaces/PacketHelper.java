@@ -1,30 +1,53 @@
 package com.denizenscript.denizen.nms.interfaces;
 
 import com.denizenscript.denizen.nms.util.jnbt.CompoundTag;
-import com.denizenscript.denizen.objects.ColorTag;
+import com.denizenscript.denizen.scripts.commands.entity.TeleportCommand;
+import com.denizenscript.denizen.utilities.PaperAPITools;
 import com.denizenscript.denizen.utilities.maps.MapImage;
-import org.bukkit.DyeColor;
+import com.denizenscript.denizencore.objects.core.ColorTag;
+import org.bukkit.Bukkit;
+import org.bukkit.EntityEffect;
 import org.bukkit.Location;
+import org.bukkit.WorldBorder;
+import org.bukkit.block.Banner;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.map.MapCanvas;
 import org.bukkit.map.MapPalette;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface PacketHelper {
 
     void setFakeAbsorption(Player player, float value);
 
-    void resetWorldBorder(Player player);
+    default void resetWorldBorder(Player player) { // TODO: once minimum version is 1.18 or higher, remove from NMS
+        player.setWorldBorder(null);
+    }
 
-    void setWorldBorder(Player player, Location center, double size, double currSize, long time, int warningDistance, int warningTime);
+    default void setWorldBorder(Player player, Location center, double size, double currSize, long time, int warningDistance, int warningTime) { // TODO: once minimum version is 1.18 or higher, remove from NMS
+        WorldBorder border = Bukkit.createWorldBorder();
+        border.setCenter(center);
+        if (time > 0) {
+            border.setSize(currSize);
+            border.setSize(size, time / 1000);
+        }
+        else {
+            border.setSize(size);
+        }
+        border.setWarningDistance(warningDistance);
+        border.setWarningTime(warningTime);
+        player.setWorldBorder(border);
+    }
 
     void setSlot(Player player, int slot, ItemStack itemStack, boolean playerOnly);
 
@@ -34,43 +57,61 @@ public interface PacketHelper {
 
     void setVision(Player player, EntityType entityType);
 
-    default void showDemoScreen(Player player) {
-        throw new UnsupportedOperationException();
+    default void showDemoScreen(Player player) { // TODO: once minimum version is 1.18 or higher, remove from NMS
+        player.showDemoScreen();
     }
 
     void showBlockAction(Player player, Location location, int action, int state);
 
-    void showBlockCrack(Player player, int id, Location location, int progress);
+    default void showBlockCrack(Player player, int id, Location location, int progress) {
+        float progressFloat = 0;
+        if (progress >= 0 && progress <= 9) {
+            // Spigot treats 0 as -1, so replace 0 with 0.1 which will then get floored
+            progressFloat = Math.max(progress, 0.1f) / 9f;
+        }
+        player.sendBlockDamage(location, progressFloat, id);
+    }
 
-    void showTileEntityData(Player player, Location location, int action, CompoundTag compoundTag);
-
-    void showBannerUpdate(Player player, Location location, DyeColor base, List<Pattern> patterns);
-
-    void showTabListHeaderFooter(Player player, String header, String footer);
-
-    void resetTabListHeaderFooter(Player player);
-
-    void showTitle(Player player, String title, String subtitle, int fadeIn, int stay, int fadeOut);
-
-    void showEquipment(Player player, LivingEntity entity, EquipmentSlot equipmentSlot, ItemStack itemStack);
-
-    void resetEquipment(Player player, LivingEntity entity);
-
-    void openBook(Player player, EquipmentSlot hand);
-
-    void showHealth(Player player, float health, int food, float saturation);
-
-    default void showMobHealth(Player player, LivingEntity mob, double health, double maxHealth) {
+    default void showTileEntityData(Player player, Location location, int action, CompoundTag compoundTag) { // TODO: once minimum version is 1.20, remove in favor of Player#sendBlockUpdate
         throw new UnsupportedOperationException();
     }
 
-    void resetHealth(Player player);
+    default void showBannerUpdate(Player player, Location location, List<Pattern> patterns) { // TODO: once minimum version is 1.20, remove from NMS
+        Banner banner = (Banner) location.getBlock().getState();
+        banner.setPatterns(patterns);
+        player.sendBlockUpdate(location, banner);
+    }
 
-    void showExperience(Player player, float experience, int level);
+    void showTabListHeaderFooter(Player player, String header, String footer);
 
-    void resetExperience(Player player);
+    void showTitle(Player player, String title, String subtitle, int fadeIn, int stay, int fadeOut);
 
-    boolean showSignEditor(Player player, Location location);
+    default void showEquipment(Player player, LivingEntity entity, EquipmentSlot equipmentSlot, ItemStack itemStack) { // TODO: once minimum version is 1.18 or higher, remove from NMS
+        player.sendEquipmentChange(entity, equipmentSlot, itemStack);
+    }
+
+    default void resetEquipment(Player player, LivingEntity entity) { // TODO: once minimum version is 1.19 or higher, remove from NMS
+        EntityEquipment equipment = entity.getEquipment();
+        Map<EquipmentSlot, ItemStack> equipmentMap = new EnumMap<>(EquipmentSlot.class);
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            if (PaperAPITools.instance.canUseEquipmentSlot(entity, slot)) {
+                equipmentMap.put(slot, equipment.getItem(slot));
+            }
+        }
+        player.sendEquipmentChange(entity, equipmentMap);
+    }
+
+    default void showHealth(Player player, float health, int food, float saturation) { // TODO: once minimum version is 1.20, remove from NMS
+        player.sendHealthUpdate(health, food, saturation);
+    }
+
+    void showMobHealth(Player player, LivingEntity mob, double health, double maxHealth);
+
+    default void resetHealth(Player player) { // TODO: once minimum version is 1.20, remove from NMS
+        player.sendHealthUpdate(player.getHealth(), player.getFoodLevel(), player.getSaturation());
+    }
+
+    void showSignEditor(Player player, Location location); // TODO: once minimum version is 1.18 or higher, change to "showFakeSignEditor" and remove location param
 
     void forceSpectate(Player player, Entity entity);
 
@@ -80,28 +121,17 @@ public interface PacketHelper {
         // Pre-1.18 do nothing
     }
 
-    default void sendRename(Player player, Entity entity, String name, boolean listMode) {
-        throw new UnsupportedOperationException();
-    }
+    void sendRename(Player player, Entity entity, String name, boolean listMode);
 
-    default void generateNoCollideTeam(Player player, UUID noCollide) {
-        throw new UnsupportedOperationException();
-    }
+    void generateNoCollideTeam(Player player, UUID noCollide);
 
-    default void removeNoCollideTeam(Player player, UUID noCollide) {
-        throw new UnsupportedOperationException();
-    }
+    void removeNoCollideTeam(Player player, UUID noCollide);
 
-    default void sendEntityMetadataFlagsUpdate(Player player, Entity entity) {
-    }
+    void sendEntityMetadataFlagsUpdate(Player player, Entity entity);
 
-    default void sendEntityEffect(Player player, Entity entity, byte effectId) {
-        throw new UnsupportedOperationException();
-    }
+    void sendEntityEffect(Player player, Entity entity, EntityEffect effect);
 
-    default int getPacketStats(Player player, boolean sent) {
-        throw new UnsupportedOperationException();
-    }
+    int getPacketStats(Player player, boolean sent);
 
     default void setMapData(MapCanvas canvas, byte[] bytes, int x, int y, MapImage image) {
         int width = image.width, height = image.height;
@@ -115,19 +145,25 @@ public interface PacketHelper {
         }
     }
 
-    default void showDebugTestMarker(Player player, Location location, ColorTag color, String name, int time) {
-        throw new UnsupportedOperationException();
-    }
+    void showDebugTestMarker(Player player, Location location, ColorTag color, String name, int time);
 
-    default void clearDebugTestMarker(Player player) {
-        throw new UnsupportedOperationException();
-    }
+    void clearDebugTestMarker(Player player);
 
-    default void sendBrand(Player player, String brand) {
-        throw new UnsupportedOperationException();
-    }
+    void sendBrand(Player player, String brand);
 
     default void sendCollectItemEntity(Player player, Entity taker, Entity item, int amount) {
+        throw new UnsupportedOperationException();
+    }
+
+    default void sendRelativePositionPacket(Player player, double x, double y, double z, float yaw, float pitch, List<TeleportCommand.Relative> relativeMovement) {
+        throw new UnsupportedOperationException();
+    }
+
+    default void sendRelativeLookPacket(Player player, float yaw, float pitch) {
+        throw new UnsupportedOperationException();
+    }
+
+    default void sendEntityDataPacket(List<Player> players, Entity entity, List<Object> data) {
         throw new UnsupportedOperationException();
     }
 }

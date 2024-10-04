@@ -28,7 +28,7 @@ public class ItemArmorStand implements Property {
             "armor_stand_data"
     };
 
-    private ItemArmorStand(ItemTag item) {
+    public ItemArmorStand(ItemTag item) {
         this.item = item;
     }
 
@@ -62,7 +62,7 @@ public class ItemArmorStand implements Property {
         return "armor_stand_data";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <ItemTag.armor_stand_data>
@@ -87,6 +87,7 @@ public class ItemArmorStand implements Property {
         // @name armor_stand_data
         // @input MapTag
         // @Plugin Paper
+        // @group properties
         // @description
         // Sets a map of basic armor stand data, with keys matching EntityTag property names.
         // Allowed keys: base_plate, visible, marker, is_small, arms

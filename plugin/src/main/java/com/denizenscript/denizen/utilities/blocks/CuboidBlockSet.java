@@ -1,6 +1,8 @@
 package com.denizenscript.denizen.utilities.blocks;
 
 import com.denizenscript.denizen.Denizen;
+import com.denizenscript.denizen.nms.NMSHandler;
+import com.denizenscript.denizen.nms.NMSVersion;
 import com.denizenscript.denizen.objects.*;
 import com.denizenscript.denizen.scripts.commands.world.SchematicCommand;
 import com.denizenscript.denizen.utilities.Utilities;
@@ -30,7 +32,7 @@ public class CuboidBlockSet implements BlockSet {
     public CuboidBlockSet() {
     }
 
-    public void buildImmediate(AreaContainmentObject area, Location center, boolean copyFlags) {
+    public void buildImmediate(AreaContainmentObject area, Location center, HashSet<Material> mask, boolean copyFlags) {
         hasFlags = copyFlags;
         CuboidTag boundary;
         if (area instanceof CuboidTag && ((CuboidTag) area).pairs.size() == 1) {
@@ -58,13 +60,17 @@ public class CuboidBlockSet implements BlockSet {
                     refLoc.setX(lowX + x);
                     refLoc.setY(lowY + y);
                     refLoc.setZ(lowZ + z);
-                    blocks[index++] = (constraint == null || constraint.doesContainLocation(refLoc)) ? new FullBlockData(refLoc.getBlock(), copyFlags) : STRUCTURE_VOID;
+                    FullBlockData block = (constraint == null || constraint.doesContainLocation(refLoc)) ? new FullBlockData(refLoc.getBlock(), copyFlags) : STRUCTURE_VOID;
+                    if (block != STRUCTURE_VOID && mask != null && !mask.contains(block.data.getMaterial())) {
+                        block = STRUCTURE_VOID;
+                    }
+                    blocks[index++] = block;
                 }
             }
         }
     }
 
-    public void buildDelayed(AreaContainmentObject area, Location center, Runnable runme, long maxDelayMs, boolean copyFlags) {
+    public void buildDelayed(AreaContainmentObject area, Location center, HashSet<Material> mask, Runnable runme, long maxDelayMs, boolean copyFlags) {
         hasFlags = copyFlags;
         CuboidTag boundary;
         if (area instanceof CuboidTag && ((CuboidTag) area).pairs.size() == 1) {
@@ -98,10 +104,13 @@ public class CuboidBlockSet implements BlockSet {
                     refLoc.setX(lowX + x);
                     refLoc.setY(lowY + y);
                     refLoc.setZ(lowZ + z);
-                    blocks[index] = (constraint == null || constraint.doesContainLocation(refLoc)) ? new FullBlockData(refLoc.getBlock(), copyFlags) : STRUCTURE_VOID;
+                    FullBlockData block = (constraint == null || constraint.doesContainLocation(refLoc)) ? new FullBlockData(refLoc.getBlock(), copyFlags) : STRUCTURE_VOID;
+                    if (block != STRUCTURE_VOID && mask != null && !mask.contains(block.data.getMaterial())) {
+                        block = STRUCTURE_VOID;
+                    }
+                    blocks[index] = block;
                     index++;
                     if (CoreUtilities.monotonicMillis() - start > maxDelayMs) {
-                        SchematicCommand.noPhys = false;
                         return;
                     }
                 }
@@ -189,6 +198,14 @@ public class CuboidBlockSet implements BlockSet {
     }
 
     public static HashSet<EntityType> copyTypes = new HashSet<>(Arrays.asList(EntityType.PAINTING, EntityType.ITEM_FRAME, EntityType.ARMOR_STAND));
+
+    static {
+        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_20)) {
+            copyTypes.add(EntityType.BLOCK_DISPLAY);
+            copyTypes.add(EntityType.ITEM_DISPLAY);
+            copyTypes.add(EntityType.TEXT_DISPLAY);
+        }
+    }
 
     public void buildEntities(AreaContainmentObject area, Location center) {
         entities = new ListTag();

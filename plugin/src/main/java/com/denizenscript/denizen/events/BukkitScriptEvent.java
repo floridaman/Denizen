@@ -8,6 +8,7 @@ import com.denizenscript.denizen.scripts.containers.core.InventoryScriptHelper;
 import com.denizenscript.denizen.scripts.containers.core.ItemScriptHelper;
 import com.denizenscript.denizen.tags.BukkitTagContext;
 import com.denizenscript.denizen.utilities.NotedAreaTracker;
+import com.denizenscript.denizen.utilities.Utilities;
 import com.denizenscript.denizen.utilities.implementation.BukkitScriptEntryData;
 import com.denizenscript.denizen.utilities.inventory.SlotHelper;
 import com.denizenscript.denizencore.flags.AbstractFlagTracker;
@@ -104,8 +105,8 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
         return true;
     }
 
-    public static HashSet<String> areaCouldMatchableText = new HashSet<>(Arrays.asList("area", "cuboid", "polygon", "ellipsoid"));
-    public static HashSet<String> areaCouldMatchPrefixes = new HashSet<>(Arrays.asList("area_flagged", "biome"));
+    public static HashSet<String> areaCouldMatchableText = new HashSet<>(List.of("area", "cuboid", "polygon", "ellipsoid"));
+    public static HashSet<String> areaCouldMatchPrefixes = new HashSet<>(List.of("area_flagged", "biome"));
 
     public static boolean couldMatchArea(String text) {
         if (areaCouldMatchableText.contains(text)) {
@@ -162,8 +163,8 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
         return false;
     }
 
-    public static HashSet<String> inventoryCouldMatchableText = new HashSet<>(Arrays.asList("inventory", "notable", "note"));
-    public static HashSet<String> inventoryCouldMatchPrefixes = new HashSet<>(Arrays.asList("inventory_flagged"));
+    public static HashSet<String> inventoryCouldMatchableText = new HashSet<>(List.of("inventory", "notable", "note", "gui"));
+    public static HashSet<String> inventoryCouldMatchPrefixes = new HashSet<>(List.of("inventory_flagged"));
 
     public static boolean couldMatchInventory(String text) {
         if (inventoryCouldMatchableText.contains(text)) {
@@ -226,7 +227,7 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
         return false;
     }
 
-    public static HashSet<String> entityCouldMatchPrefixes = new HashSet<>(Arrays.asList("entity_flagged", "player_flagged", "npc_flagged"));
+    public static HashSet<String> entityCouldMatchPrefixes = new HashSet<>(List.of("entity_flagged", "player_flagged", "npc_flagged"));
 
     public static boolean exactMatchEntity(String text) {
         if (EntityTag.specialEntityMatchables.contains(text)) {
@@ -245,7 +246,7 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
         return false;
     }
 
-    public static HashSet<String> vehicleCouldMatchPrefixes = new HashSet<>(Arrays.asList("entity_flagged"));
+    public static HashSet<String> vehicleCouldMatchPrefixes = new HashSet<>(List.of("entity_flagged"));
 
     public static boolean exactMatchesVehicle(String text) {
         if (text.equals("vehicle")) {
@@ -344,8 +345,8 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
         return couldMatchBlock(text, null);
     }
 
-    public static HashSet<String> materialCouldMatchableText = new HashSet<>(Arrays.asList("block", "material"));
-    public static HashSet<String> materialCouldMatchPrefixes = new HashSet<>(Arrays.asList("vanilla_tagged", "material_flagged"));
+    public static HashSet<String> materialCouldMatchableText = new HashSet<>(List.of("block", "material"));
+    public static HashSet<String> materialCouldMatchPrefixes = new HashSet<>(List.of("vanilla_tagged", "material_flagged"));
 
     public static boolean couldMatchBlock(String text, Function<Material, Boolean> requirement) {
         if (materialCouldMatchableText.contains(text)) {
@@ -383,8 +384,8 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
         return false;
     }
 
-    public static HashSet<String> itemCouldMatchableText = new HashSet<>(Arrays.asList("item", "potion"));
-    public static HashSet<String> itemCouldMatchPrefixes = new HashSet<>(Arrays.asList("item_flagged", "vanilla_tagged", "item_enchanted", "material_flagged", "raw_exact"));
+    public static HashSet<String> itemCouldMatchableText = new HashSet<>(List.of("item", "potion"));
+    public static HashSet<String> itemCouldMatchPrefixes = new HashSet<>(List.of("item_flagged", "vanilla_tagged", "item_enchanted", "material_flagged", "raw_exact"));
 
     public static boolean couldMatchItem(String text) {
         if (itemCouldMatchableText.contains(text)) {
@@ -441,7 +442,7 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
         }
 
         String with = path.eventArgLowerAt(index + 1);
-        if (with != null && (held == null || !held.tryAdvancedMatcher(with))) {
+        if (with != null && (held == null || !held.tryAdvancedMatcher(with, path.context))) {
             return false;
         }
         return true;
@@ -559,10 +560,10 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
 
     @Override
     public ObjectTag getContext(String name) {
-        switch (name) {
-            case "reflect_event": return currentEvent == null ? null : new JavaReflectedObjectTag(currentEvent);
-        }
-        return super.getContext(name);
+        return switch (name) {
+            case "reflect_event" -> currentEvent == null ? null : new JavaReflectedObjectTag(currentEvent);
+            default -> super.getContext(name);
+        };
     }
 
     @Override
@@ -646,7 +647,7 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
     }
 
     public boolean runLocationFlaggedCheck(ScriptPath path, String switchName, Location location) {
-        if (!path.switches.containsKey(switchName)) { // NOTE: opti to avoid 'getFlagTracker' call, also prevents pre-1.16 borks
+        if (!path.switches.containsKey(switchName)) { // NOTE: opti to avoid 'getFlagTracker' call
             return true;
         }
         return runFlaggedCheck(path, switchName, location == null ? null : new LocationTag(location).getFlagTracker());
@@ -699,9 +700,9 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
             return false;
         }
         if (inputText.startsWith("!")) {
-            return !inCheckInternal(getTagContext(path), getName(), location, inputText.substring(1), path.event, path.container.getName());
+            return !inCheckInternal(path.context, getName(), location, inputText.substring(1), path.event, path.container.getName());
         }
-        return inCheckInternal(getTagContext(path), getName(), location, inputText, path.event, path.container.getName());
+        return inCheckInternal(path.context, getName(), location, inputText, path.event, path.container.getName());
     }
 
     public static boolean inCheckInternal(TagContext context, String name, Location location, String inputText, String evtLine, String containerName) {
@@ -725,7 +726,7 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
             }
             else if (lower.startsWith("biome:")) {
                 String biome = inputText.substring("biome:".length());
-                return runGenericCheck(biome, new LocationTag(location).getBiome().name);
+                return runGenericCheck(biome, Utilities.namespacedKeyToString(new LocationTag(location).getBiome().getKey()));
             }
         }
         if (lower.equals("cuboid")) {
@@ -814,7 +815,7 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
             if (CoreUtilities.equalsIgnoreCase(with, "item")) {
                 return true;
             }
-            if (held == null || !held.tryAdvancedMatcher(with)) {
+            if (held == null || !held.tryAdvancedMatcher(with, path.context)) {
                 return false;
             }
         }
@@ -953,6 +954,7 @@ public abstract class BukkitScriptEvent extends ScriptEvent {
     // And thus should be fine. One limitation you should note is demonstrated in the second example event:
     // The normal guarantees of the event are no longer present (eg that the entity is still valid) and as such
     // you should validate these expectations remain true after the event (as seen with the 'if is_spawned' check).
+    // (See also <@link language Script Event After vs On>)
     //
     // If you need determine changes to the event, you can instead use 'on' but add a 'wait 1t' after the determine but before other script logic.
     // This allows the risky parts to be after the event and outside the problem area, but still determine changes to the event.

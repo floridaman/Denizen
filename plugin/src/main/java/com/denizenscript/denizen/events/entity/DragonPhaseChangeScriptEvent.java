@@ -28,7 +28,7 @@ public class DragonPhaseChangeScriptEvent extends BukkitScriptEvent implements L
     //
     // @Context
     // <context.entity> returns the EntityTag of the dragon.
-    // <context.new_phase> returns an ElementTag of the dragon's new phase. Phases: <@link url https://hub.spigotmc.org/javadocs/spigot/org/bukkit/event/entity/EnderDragonChangePhaseEvent.html>
+    // <context.new_phase> returns an ElementTag of the dragon's new phase. Phases: <@link url https://hub.spigotmc.org/javadocs/spigot/org/bukkit/entity/EnderDragon.Phase.html>
     // <context.old_phase> returns an ElementTag of the dragon's old phase. Can be any phase or 'null' in some cases.
     //
     // @Determine
@@ -47,7 +47,7 @@ public class DragonPhaseChangeScriptEvent extends BukkitScriptEvent implements L
     @Override
     public boolean matches(ScriptPath path) {
         String target = path.eventArgLowerAt(0);
-        if (!entity.tryAdvancedMatcher(target)) {
+        if (!entity.tryAdvancedMatcher(target, path.context)) {
             return false;
         }
         if (!runInCheck(path, entity.getLocation())) {

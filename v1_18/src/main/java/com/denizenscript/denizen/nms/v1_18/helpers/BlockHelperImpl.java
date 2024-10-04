@@ -1,21 +1,21 @@
 package com.denizenscript.denizen.nms.v1_18.helpers;
 
+import com.denizenscript.denizen.nms.interfaces.BlockHelper;
+import com.denizenscript.denizen.nms.util.PlayerProfile;
+import com.denizenscript.denizen.nms.util.jnbt.CompoundTag;
 import com.denizenscript.denizen.nms.util.jnbt.CompoundTagBuilder;
 import com.denizenscript.denizen.nms.v1_18.ReflectionMappingsInfo;
 import com.denizenscript.denizen.nms.v1_18.impl.jnbt.CompoundTagImpl;
 import com.denizenscript.denizen.objects.EntityTag;
 import com.denizenscript.denizen.utilities.VanillaTagHelper;
 import com.denizenscript.denizencore.objects.Mechanism;
+import com.denizenscript.denizencore.utilities.ReflectionHelper;
+import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.google.common.collect.Iterables;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
-import com.denizenscript.denizen.nms.interfaces.BlockHelper;
-import com.denizenscript.denizen.nms.util.PlayerProfile;
-import com.denizenscript.denizencore.utilities.ReflectionHelper;
-import com.denizenscript.denizen.nms.util.jnbt.CompoundTag;
-import com.denizenscript.denizencore.utilities.debugging.Debug;
-import net.minecraft.core.*;
 import net.minecraft.core.Registry;
+import net.minecraft.core.*;
 import net.minecraft.network.protocol.game.ClientboundUpdateTagsPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -40,7 +40,10 @@ import org.bukkit.block.*;
 import org.bukkit.craftbukkit.v1_18_R2.CraftChunk;
 import org.bukkit.craftbukkit.v1_18_R2.CraftServer;
 import org.bukkit.craftbukkit.v1_18_R2.CraftWorld;
-import org.bukkit.craftbukkit.v1_18_R2.block.*;
+import org.bukkit.craftbukkit.v1_18_R2.block.CraftBlock;
+import org.bukkit.craftbukkit.v1_18_R2.block.CraftBlockEntityState;
+import org.bukkit.craftbukkit.v1_18_R2.block.CraftCreatureSpawner;
+import org.bukkit.craftbukkit.v1_18_R2.block.CraftSkull;
 import org.bukkit.craftbukkit.v1_18_R2.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.v1_18_R2.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.v1_18_R2.tag.CraftBlockTag;
@@ -153,21 +156,6 @@ public class BlockHelperImpl implements BlockHelper {
         return ReflectionHelper.getFieldValue(net.minecraft.world.level.block.state.BlockBehaviour.class, ReflectionMappingsInfo.BlockBehaviour_explosionResistance, block);
     }
 
-    @Override
-    public org.bukkit.block.BlockState generateBlockState(Block block, Material mat) {
-        try {
-            CraftBlockState state = (CraftBlockState) CRAFTBLOCKSTATE_CONSTRUCTOR.invoke(block);
-            state.setData(CraftMagicNumbers.getBlock(mat).defaultBlockState());
-            return state;
-        }
-        catch (Throwable ex) {
-            Debug.echoError(ex);
-            return null;
-        }
-    }
-
-    public static final MethodHandle CRAFTBLOCKSTATE_CONSTRUCTOR = ReflectionHelper.getConstructor(CraftBlockState.class, Block.class);
-
     public static final Field BLOCK_MATERIAL = ReflectionHelper.getFields(net.minecraft.world.level.block.state.BlockBehaviour.class).getFirstOfType(net.minecraft.world.level.material.Material.class);
 
     public static final MethodHandle MATERIAL_PUSH_REACTION_SETTER = ReflectionHelper.getFinalSetterForFirstOfType(net.minecraft.world.level.material.Material.class, PushReaction.class);
@@ -192,14 +180,14 @@ public class BlockHelperImpl implements BlockHelper {
     }
 
     @Override
-    public String getPushReaction(Material mat) {
-        return getInternalMaterial(mat).getPushReaction().name();
+    public PistonPushReaction getPushReaction(Material mat) {
+        return PistonPushReaction.VALUES[getInternalMaterial(mat).getPushReaction().ordinal()];
     }
 
     @Override
-    public void setPushReaction(Material mat, String reaction) {
+    public void setPushReaction(Material mat, PistonPushReaction reaction) {
         try {
-            MATERIAL_PUSH_REACTION_SETTER.invoke(getInternalMaterial(mat), PushReaction.valueOf(reaction));
+            MATERIAL_PUSH_REACTION_SETTER.invoke(getInternalMaterial(mat), PushReaction.values()[reaction.ordinal()]);
         }
         catch (Throwable ex) {
             Debug.echoError(ex);
@@ -262,9 +250,9 @@ public class BlockHelperImpl implements BlockHelper {
     }
 
     @Override
-    public void ringBell(Bell block) {
-        org.bukkit.block.data.type.Bell bellData = (org.bukkit.block.data.type.Bell) block.getBlockData();
-        Direction face = Direction.byName(bellData.getFacing().name());
+    public void ringBell(Bell bell) {
+        org.bukkit.block.data.type.Bell bellData = (org.bukkit.block.data.type.Bell) bell.getBlockData();
+        Direction face = CraftBlock.blockFaceToNotch(bellData.getFacing());
         Direction dir = Direction.NORTH;
         switch (bellData.getAttachment()) {
             case DOUBLE_WALL:
@@ -280,7 +268,7 @@ public class BlockHelperImpl implements BlockHelper {
                 dir = face;
                 break;
         }
-        CraftBlock craftBlock = (CraftBlock) block.getBlock();
+        CraftBlock craftBlock = (CraftBlock) bell.getBlock();
         ((BellBlock) Blocks.BELL).attemptToRing(craftBlock.getCraftWorld().getHandle(), craftBlock.getPosition(), dir);
     }
 

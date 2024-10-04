@@ -30,13 +30,13 @@ public class MaterialNote implements Property {
             "note"
     };
 
-    private MaterialNote(MaterialTag _material) {
+    public MaterialNote(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.note_octave>

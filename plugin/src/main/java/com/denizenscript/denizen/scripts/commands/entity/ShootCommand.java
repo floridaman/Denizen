@@ -21,7 +21,6 @@ import com.denizenscript.denizencore.scripts.commands.AbstractCommand;
 import com.denizenscript.denizencore.scripts.commands.Holdable;
 import com.denizenscript.denizencore.scripts.containers.core.TaskScriptContainer;
 import com.denizenscript.denizencore.scripts.queues.ScriptQueue;
-import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizencore.utilities.ScriptUtilities;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
@@ -267,9 +266,9 @@ public class ShootCommand extends AbstractCommand implements Listener, Holdable 
                 }
             }
         }
-        scriptEntry.addObject("shot_entities", entityList);
+        scriptEntry.saveObject("shot_entities", entityList);
         if (entityList.size() == 1) {
-            scriptEntry.addObject("shot_entity", entityList.getObject(0));
+            scriptEntry.saveObject("shot_entity", entityList.getObject(0));
         }
         if (spread == null) {
             Position.mount(Conversion.convertEntities(entities));
@@ -309,11 +308,9 @@ public class ShootCommand extends AbstractCommand implements Listener, Holdable 
         }
         if (spread != null) {
             Vector base = lastEntity.getVelocity().clone();
-            float sf = spread.asFloat();
+            double spreadDouble = spread.asDouble();
             for (EntityTag entity : entities) {
-                Vector newvel = Velocity.spread(base, (CoreUtilities.getRandom().nextDouble() > 0.5f ? 1 : -1) * Math.toRadians(CoreUtilities.getRandom().nextDouble() * sf),
-                        (CoreUtilities.getRandom().nextDouble() > 0.5f ? 1 : -1) * Math.toRadians(CoreUtilities.getRandom().nextDouble() * sf));
-                entity.setVelocity(newvel);
+                entity.setVelocity(Velocity.randomSpread(base, spreadDouble));
             }
         }
         final LocationTag start = new LocationTag(lastEntity.getLocation());
@@ -360,15 +357,15 @@ public class ShootCommand extends AbstractCommand implements Listener, Holdable 
                             EntityTag hit = arrows.get(entity.getUUID());
                             arrows.remove(entity.getUUID());
                             if (hit != null) {
-                                hitEntities.addObject(hit);
+                                hitEntities.addObject(hit.getDenizenObject());
                             }
                         }
                     }
                     if (lastLocation == null) {
                         lastLocation = start;
                     }
-                    scriptEntry.addObject("location", new LocationTag(lastLocation));
-                    scriptEntry.addObject("hit_entities", hitEntities);
+                    scriptEntry.saveObject("location", new LocationTag(lastLocation));
+                    scriptEntry.saveObject("hit_entities", hitEntities);
                     if (script != null) {
                         Consumer<ScriptQueue> configure = (queue) -> {
                             queue.addDefinition("location", new LocationTag(lastLocation));

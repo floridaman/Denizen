@@ -153,6 +153,9 @@ public class ItemScriptContainer extends ScriptContainer {
     //        3:
     //            # Shapeless recipes take a list of input items.
     //            type: shapeless
+    //            # Optionally specify the shapeless category for shapeless recipes, as "building", "redstone", "equipment", or "misc". Defaults to "misc" if unspecified.
+    //            # | Only some recipes should have this key.
+    //            category: misc
     //            input: ItemTag|...
     //        4:
     //            # Stonecutting recipes take exactly one input item.
@@ -164,13 +167,18 @@ public class ItemScriptContainer extends ScriptContainer {
     //            # Optionally specify the cook time as a duration (default 2s).
     //            # | Only some recipes should have this key.
     //            cook_time: 1s
+    //            # Optionally specify the cooking category for cooking recipes, as "food", "blocks", or "misc". Defaults to "misc" if unspecified.
+    //            # | Only some recipes should have this key.
+    //            category: misc
     //            # Optionally specify experience reward amount (default 0).
     //            # | Only some recipes should have this key.
     //            experience: 5
     //            input: ItemTag
     //        6:
     //            # Smithing recipes take one base item and one upgrade item.
+    //            # In versions 1.20 and up, smithing recipes take one template item, one base item, and one upgrade item.
     //            type: smithing
+    //            template: ItemTag
     //            base: ItemTag
     //            # Optionally, choose what values to retain, as a simple pipe-separated list of parts to retain.
     //            # If unspecified, no values will be retained.
@@ -181,6 +189,7 @@ public class ItemScriptContainer extends ScriptContainer {
     //        7:
     //            # Brewing recipes take one base item and one ingredient item.
     //            # | Brewing recipes are only available on Paper versions 1.18 and up.
+    //            # | Brewing recipes also have a special input option on 1.20 and above: "matcher:<item matcher>", to allow advanced matchers on the input/ingredient items.
     //            type: brewing
     //            input: ItemTag
     //            ingredient: ItemTag

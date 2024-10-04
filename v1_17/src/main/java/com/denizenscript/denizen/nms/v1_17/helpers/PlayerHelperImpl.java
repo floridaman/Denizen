@@ -23,6 +23,7 @@ import com.denizenscript.denizencore.utilities.ReflectionHelper;
 import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.mojang.authlib.GameProfile;
 import net.md_5.bungee.api.ChatColor;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.resources.ResourceLocation;
@@ -38,6 +39,7 @@ import net.minecraft.stats.ServerRecipeBook;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import org.bukkit.*;
 import org.bukkit.boss.BossBar;
 import org.bukkit.craftbukkit.v1_17_R1.CraftServer;
@@ -45,6 +47,7 @@ import org.bukkit.craftbukkit.v1_17_R1.CraftWorld;
 import org.bukkit.craftbukkit.v1_17_R1.boss.CraftBossBar;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_17_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_17_R1.util.CraftNamespacedKey;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -76,8 +79,8 @@ public class PlayerHelperImpl extends PlayerHelper {
     }
 
     @Override
-    public void stopSound(Player player, String sound, SoundCategory category) {
-        ResourceLocation soundKey = sound == null ? null : new ResourceLocation(sound);
+    public void stopSound(Player player, NamespacedKey sound, SoundCategory category) {
+        ResourceLocation soundKey = sound == null ? null : CraftNamespacedKey.toMinecraft(sound);
         net.minecraft.sounds.SoundSource nmsCategory = category == null ? null : net.minecraft.sounds.SoundSource.valueOf(category.name());
         ((CraftPlayer) player).getHandle().connection.send(new ClientboundStopSoundPacket(soundKey, nmsCategory));
     }
@@ -304,11 +307,6 @@ public class PlayerHelperImpl extends PlayerHelper {
     }
 
     @Override
-    public ImprovedOfflinePlayer getOfflineData(OfflinePlayer offlinePlayer) {
-        return new ImprovedOfflinePlayerImpl(offlinePlayer.getUniqueId());
-    }
-
-    @Override
     public void resendRecipeDetails(Player player) {
         Collection<Recipe<?>> recipes = ((CraftServer) Bukkit.getServer()).getServer().getRecipeManager().getRecipes();
         ClientboundUpdateRecipesPacket updatePacket = new ClientboundUpdateRecipesPacket(recipes);
@@ -334,7 +332,7 @@ public class PlayerHelperImpl extends PlayerHelper {
     }
 
     @Override
-    public String getPlayerBrand(Player player) {
+    public String getClientBrand(Player player) {
         return ((DenizenNetworkManagerImpl) ((CraftPlayer) player).getHandle().connection.connection).packetListener.brand;
     }
 
@@ -368,6 +366,20 @@ public class PlayerHelperImpl extends PlayerHelper {
         catch (Throwable ex) {
             Debug.echoError(ex);
         }
+    }
+
+    @Override
+    public Location getBedSpawnLocation(Player player) {
+        ServerPlayer nmsPlayer = ((CraftPlayer) player).getHandle();
+        BlockPos spawnPosition = nmsPlayer.getRespawnPosition();
+        if (spawnPosition == null) {
+            return null;
+        }
+        Level nmsWorld = MinecraftServer.getServer().getLevel(nmsPlayer.getRespawnDimension());
+        if (nmsWorld == null) {
+            return null;
+        }
+        return new Location(nmsWorld.getWorld(), spawnPosition.getX(), spawnPosition.getY(), spawnPosition.getZ(), nmsPlayer.getRespawnAngle(), 0);
     }
 
     @Override

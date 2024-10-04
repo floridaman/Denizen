@@ -29,13 +29,13 @@ public class MaterialPersistent implements Property {
             "persistent"
     };
 
-    private MaterialPersistent(MaterialTag _material) {
+    public MaterialPersistent(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.persistent>

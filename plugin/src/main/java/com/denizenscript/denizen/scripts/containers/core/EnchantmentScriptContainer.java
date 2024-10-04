@@ -129,7 +129,7 @@ public class EnchantmentScriptContainer extends ScriptContainer {
     //     # This is used internally by the enchanting table and the anvil to determine if this enchantment can be given alongside another.
     //     # If unspecified, will default to always true.
     //     # | Most enchantment scripts can exclude this key.
-    //     is_compatible: <context.enchantment_key.advanced_matches_text[minecraft:lure|minecraft:luck*]>
+    //     is_compatible: <context.enchantment_key.advanced_matches[minecraft:lure|minecraft:luck*]>
     //
     //     # A tag that returns a boolean indicating whether this enchantment can enchant a specific item.
     //     # Can make use of "<context.item>" for the applicable ItemTag.
@@ -297,7 +297,7 @@ public class EnchantmentScriptContainer extends ScriptContainer {
         src.contexts.put("level", new ElementTag(level));
         src.contexts.put("cause", new ElementTag(causeName));
         if (attacker != null) {
-            src.contexts.put("attacker", new EntityTag(attacker));
+            src.contexts.put("attacker", new EntityTag(attacker).getDenizenObject());
         }
         return Integer.parseInt(autoTag(damageProtectionTaggable, src));
     }
@@ -321,10 +321,10 @@ public class EnchantmentScriptContainer extends ScriptContainer {
         ContextSource.SimpleMap src = new ContextSource.SimpleMap();
         src.contexts = new HashMap<>();
         if (attacker != null) {
-            src.contexts.put("attacker", new EntityTag(attacker));
+            src.contexts.put("attacker", new EntityTag(attacker).getDenizenObject());
         }
         if (victim != null) {
-            src.contexts.put("victim", new EntityTag(victim));
+            src.contexts.put("victim", new EntityTag(victim).getDenizenObject());
         }
         src.contexts.put("level", new ElementTag(level));
         queue.contextSource = src;

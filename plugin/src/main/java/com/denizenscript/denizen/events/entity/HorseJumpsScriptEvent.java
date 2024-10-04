@@ -64,7 +64,7 @@ public class HorseJumpsScriptEvent extends BukkitScriptEvent implements Listener
         String arg1 = path.eventArgLowerAt(0);
         String arg2 = path.eventArgLowerAt(1);
         String tamed = arg2.equals("jumps") ? arg1 : arg2;
-        if (!entity.tryAdvancedMatcher(tamed)) {
+        if (!entity.tryAdvancedMatcher(tamed, path.context)) {
             return false;
         }
         if (path.eventArgLowerAt(2).equals("jumps") && (color == null || !arg1.equals(CoreUtilities.toLowerCase(color.toString())))) {
@@ -78,8 +78,8 @@ public class HorseJumpsScriptEvent extends BukkitScriptEvent implements Listener
 
     @Override
     public boolean applyDetermination(ScriptPath path, ObjectTag determinationObj) {
-        if (determinationObj instanceof ElementTag && ((ElementTag) determinationObj).isFloat()) {
-            event.setPower(((ElementTag) determinationObj).asFloat());
+        if (determinationObj instanceof ElementTag element && element.isFloat()) {
+            event.setPower(element.asFloat());
             return true;
         }
         return super.applyDetermination(path, determinationObj);

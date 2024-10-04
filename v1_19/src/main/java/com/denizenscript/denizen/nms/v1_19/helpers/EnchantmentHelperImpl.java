@@ -10,6 +10,7 @@ import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizencore.utilities.ReflectionHelper;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
@@ -19,10 +20,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobType;
 import net.minecraft.world.item.enchantment.EnchantmentCategory;
 import org.bukkit.NamespacedKey;
-import org.bukkit.craftbukkit.v1_19_R1.enchantments.CraftEnchantment;
-import org.bukkit.craftbukkit.v1_19_R1.entity.CraftEntity;
-import org.bukkit.craftbukkit.v1_19_R1.inventory.CraftItemStack;
-import org.bukkit.craftbukkit.v1_19_R1.util.CraftNamespacedKey;
+import org.bukkit.craftbukkit.v1_19_R3.enchantments.CraftEnchantment;
+import org.bukkit.craftbukkit.v1_19_R3.entity.CraftEntity;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_19_R3.util.CraftNamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.entity.EntityDamageEvent;
 
@@ -61,7 +62,7 @@ public class EnchantmentHelperImpl extends EnchantmentHelper {
                 }
                 @Override
                 public int getDamageProtection(int level, DamageSource src) {
-                    return script.script.getDamageProtection(level, src.msgId, src.getEntity() == null ? null : src.getEntity().getBukkitEntity());
+                    return script.script.getDamageProtection(level, src.getMsgId(), src.getEntity() == null ? null : src.getEntity().getBukkitEntity());
                 }
                 @Override
                 public float getDamageBonus(int level, MobType type) {
@@ -82,7 +83,7 @@ public class EnchantmentHelperImpl extends EnchantmentHelper {
                 }
                 @Override
                 protected boolean checkCompatibility(net.minecraft.world.item.enchantment.Enchantment nmsEnchantment) {
-                    ResourceLocation nmsKey = Registry.ENCHANTMENT.getKey(nmsEnchantment);
+                    ResourceLocation nmsKey = BuiltInRegistries.ENCHANTMENT.getKey(nmsEnchantment);
                     NamespacedKey bukkitKey = CraftNamespacedKey.fromMinecraft(nmsKey);
                     org.bukkit.enchantments.Enchantment bukkitEnchant = CraftEnchantment.getByKey(bukkitKey);
                     return script.script.isCompatible(bukkitEnchant);
@@ -129,9 +130,9 @@ public class EnchantmentHelperImpl extends EnchantmentHelper {
                 }
             };
             String enchName = CoreUtilities.toUpperCase(script.script.id);
-            boolean wasFrozen = REGISTRY_FROZEN.getBoolean(Registry.ENCHANTMENT);
-            REGISTRY_FROZEN.setBoolean(Registry.ENCHANTMENT, false);
-            Registry.register(Registry.ENCHANTMENT, "denizen:" + script.script.id, nmsEnchant);
+            boolean wasFrozen = REGISTRY_FROZEN.getBoolean(BuiltInRegistries.ENCHANTMENT);
+            REGISTRY_FROZEN.setBoolean(BuiltInRegistries.ENCHANTMENT, false);
+            Registry.register(BuiltInRegistries.ENCHANTMENT, "denizen:" + script.script.id, nmsEnchant);
             CraftEnchantment ench = new CraftEnchantment(nmsEnchant) {
                 @Override
                 public String getName() {
@@ -139,7 +140,7 @@ public class EnchantmentHelperImpl extends EnchantmentHelper {
                 }
             };
             if (wasFrozen) {
-                ((MappedRegistry) Registry.ENCHANTMENT).freeze();
+                ((MappedRegistry) BuiltInRegistries.ENCHANTMENT).freeze();
             }
             ENCHANTMENTS_BY_KEY.put(ench.getKey(), ench);
             ENCHANTMENTS_BY_NAME.put(enchName, ench);
@@ -209,7 +210,8 @@ public class EnchantmentHelperImpl extends EnchantmentHelper {
 
     @Override
     public int getDamageProtection(Enchantment enchantment, int level, EntityDamageEvent.DamageCause type, org.bukkit.entity.Entity attacker) {
-        DamageSource src = EntityHelperImpl.getSourceFor(((CraftEntity) attacker).getHandle(), type);
+        Entity nmsAtacker = attacker == null ? null : ((CraftEntity) attacker).getHandle();
+        DamageSource src = EntityHelperImpl.getSourceFor(nmsAtacker, type, nmsAtacker);
         if (src instanceof EntityHelperImpl.FakeDamageSrc) {
             src = ((EntityHelperImpl.FakeDamageSrc) src).real;
         }

@@ -3,7 +3,6 @@ package com.denizenscript.denizen.scripts.commands.world;
 import com.denizenscript.denizen.Denizen;
 import com.denizenscript.denizen.utilities.Settings;
 import com.denizenscript.denizen.utilities.Utilities;
-import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizencore.exceptions.InvalidArgumentsException;
 import com.denizenscript.denizencore.objects.Argument;
 import com.denizenscript.denizencore.objects.core.ElementTag;
@@ -12,6 +11,7 @@ import com.denizenscript.denizencore.scripts.commands.AbstractCommand;
 import com.denizenscript.denizencore.scripts.commands.Holdable;
 import com.denizenscript.denizencore.utilities.AsciiMatcher;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
+import com.denizenscript.denizencore.utilities.debugging.Debug;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -44,15 +44,16 @@ public class CreateWorldCommand extends AbstractCommand implements Holdable {
     // @Description
     // This command creates a new minecraft world with the specified name, or loads an existing world by that name.
     //
-    // Optionally specify a plugin-based world generator by it's generator ID.
-    // If you want an empty void world, you can use "generator:denizen:void".
+    // Optionally specify a plugin-based world generator by its generator ID.
+    // If you want an empty void world with a void biome, you can use "denizen:void".
+    // If you want an empty void world with vanilla biomes, you can use "denizen:void_biomes".
     //
     // Optionally specify additional generator settings as JSON input.
     //
     // Optionally specify a world type which can be specified with 'worldtype:' (defaults to NORMAL).
     // For all world types, see: <@link url https://hub.spigotmc.org/javadocs/spigot/org/bukkit/WorldType.html>
     //
-    // Optionally specify an environment (defaults to NORMAL, can also be NETHER, THE_END, or CUSTOM).
+    // Optionally specify an environment (defaults to NORMAL, can also be NETHER, THE_END).
     //
     // Optionally choose whether to generate structures in this world.
     //

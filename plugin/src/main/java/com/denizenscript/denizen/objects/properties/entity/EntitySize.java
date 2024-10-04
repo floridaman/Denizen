@@ -27,7 +27,7 @@ public class EntitySize implements Property {
         }
     }
 
-    private EntitySize(EntityTag ent) {
+    public EntitySize(EntityTag ent) {
         entity = ent;
     }
 
@@ -55,7 +55,7 @@ public class EntitySize implements Property {
         return "size";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.size>

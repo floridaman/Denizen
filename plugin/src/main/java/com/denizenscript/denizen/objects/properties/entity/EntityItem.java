@@ -1,13 +1,15 @@
 package com.denizenscript.denizen.objects.properties.entity;
 
+import com.denizenscript.denizen.nms.NMSHandler;
+import com.denizenscript.denizen.nms.NMSVersion;
 import com.denizenscript.denizen.objects.EntityTag;
 import com.denizenscript.denizen.objects.ItemTag;
+import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
 import com.denizenscript.denizencore.objects.Mechanism;
 import com.denizenscript.denizencore.objects.ObjectTag;
 import com.denizenscript.denizencore.objects.properties.Property;
 import com.denizenscript.denizencore.objects.properties.PropertyParser;
 import com.denizenscript.denizencore.tags.TagContext;
-import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
 import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
@@ -15,6 +17,20 @@ import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 
 public class EntityItem implements Property {
+
+    // <--[property]
+    // @object EntityTag
+    // @name item
+    // @input ItemTag
+    // @description
+    // An entity's item, which can be:
+    // - the item represented and displayed by a dropped item.
+    // - the item represented by a thrown trident.
+    // - a throwable projectile's display item.
+    // - an eye-of-ender's item, which is both displayed and dropped.
+    // - a fireball's display item.
+    // - an item display's display item.
+    // -->
 
     public static boolean describes(ObjectTag object) {
         if (!(object instanceof EntityTag)) {
@@ -25,7 +41,8 @@ public class EntityItem implements Property {
                 || entity instanceof Enderman
                 || entity instanceof SizedFireball
                 || entity instanceof ThrowableProjectile
-                || entity instanceof EnderSignal;
+                || entity instanceof EnderSignal
+                || (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_19) && entity instanceof ItemDisplay);
     }
 
     public static EntityItem getFrom(ObjectTag entity) {
@@ -41,7 +58,7 @@ public class EntityItem implements Property {
             "item"
     };
 
-    private EntityItem(EntityTag entity) {
+    public EntityItem(EntityTag entity) {
         item = entity;
     }
 
@@ -68,6 +85,9 @@ public class EntityItem implements Property {
         else if (isEnderSignal()) {
             return new ItemTag(getEnderSignal().getItem());
         }
+        else if (isDisplay()) { // TODO: 1.19: when 1.19 is minimum, make a 'getDisplay'
+            return new ItemTag(((ItemDisplay) item.getBukkitEntity()).getItemStack());
+        }
         return null;
     }
 
@@ -89,6 +109,10 @@ public class EntityItem implements Property {
 
     public boolean isEnderSignal() {
         return item.getBukkitEntity() instanceof EnderSignal;
+    }
+
+    public boolean isDisplay() {
+        return NMSHandler.getVersion().isAtLeast(NMSVersion.v1_19) && item.getBukkitEntity() instanceof Display;
     }
 
     public Item getDroppedItem() {
@@ -125,20 +149,7 @@ public class EntityItem implements Property {
         return "item";
     }
 
-    public static void registerTags() {
-
-        // <--[tag]
-        // @attribute <EntityTag.item>
-        // @returns ItemTag
-        // @mechanism EntityTag.item
-        // @group properties
-        // @description
-        // If the entity is a dropped item, returns the item represented by the entity.
-        // If the entity is a trident, returns the trident item represented by the entity.
-        // If the entity is a throwable projectile, returns the display item for that projectile.
-        // If the entity is an eye-of-ender, returns the item to be displayed and dropped by it.
-        // If the entity is a fireball, returns the fireball's display item.
-        // -->
+    public static void register() {
         PropertyParser.registerTag(EntityItem.class, ItemTag.class, "item", (attribute, object) -> {
             return object.getItem(true, attribute.context);
         });
@@ -146,24 +157,10 @@ public class EntityItem implements Property {
 
     @Override
     public void adjust(Mechanism mechanism) {
-
-        // <--[mechanism]
-        // @object EntityTag
-        // @name item
-        // @input ItemTag
-        // @description
-        // If the entity is a dropped item, sets the item represented by the entity.
-        // If the entity is a trident, sets the trident item represented by the entity.
-        // If the item is a throwable projectile, sets the display item for that projectile.
-        // If the entity is an eye-of-ender, sets the item to be displayed and dropped by it.
-        // If the entity is a fireball, sets the fireball's display item.
-        // @tags
-        // <EntityTag.item>
-        // -->
         if (mechanism.matches("item") && mechanism.requireObject(ItemTag.class)) {
             ItemStack itemStack = mechanism.valueAsType(ItemTag.class).getItemStack();
             if (item.isCitizensNPC()) {
-                item.getDenizenNPC().getCitizen().data().setPersistent(NPC.ITEM_ID_METADATA, itemStack.getType().name());
+                item.getDenizenNPC().getCitizen().data().setPersistent(NPC.Metadata.ITEM_ID, itemStack.getType().name());
             }
             if (isDroppedItem()) {
                 getDroppedItem().setItemStack(itemStack);
@@ -180,6 +177,9 @@ public class EntityItem implements Property {
             }
             else if (isEnderSignal()) {
                 getEnderSignal().setItem(itemStack);
+            }
+            else if (isDisplay()) { // TODO: 1.19: when 1.19 is minimum, make a 'getDisplay'
+                ((ItemDisplay) item.getBukkitEntity()).setItemStack(itemStack);
             }
         }
     }

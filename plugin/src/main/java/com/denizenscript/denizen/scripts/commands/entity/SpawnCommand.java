@@ -49,6 +49,8 @@ public class SpawnCommand extends AbstractCommand {
     // Optionally specify 'reason:<reason>' (Paper only) to specify the reason an entity is spawning for the 'entity spawns' event,
     // using any reason from <@link url https://hub.spigotmc.org/javadocs/spigot/org/bukkit/event/entity/CreatureSpawnEvent.SpawnReason.html>
     //
+    // If the location isn't specified, will use either the linked NPC's location, or the linked player's location.
+    //
     // @Tags
     // <EntityTag.is_spawned>
     // <server.entity_types>
@@ -119,9 +121,9 @@ public class SpawnCommand extends AbstractCommand {
             }
         }
         // Add entities to context so that the specific entities created/spawned can be fetched.
-        scriptEntry.addObject("spawned_entities", entityList);
+        scriptEntry.saveObject("spawned_entities", entityList);
         if (entities.size() != 0) {
-            scriptEntry.addObject("spawned_entity", entityList.getObject(0));
+            scriptEntry.saveObject("spawned_entity", entityList.getObject(0));
         }
     }
 }

@@ -1,14 +1,13 @@
 package com.denizenscript.denizen.scripts.commands.world;
 
 import com.denizenscript.denizen.Denizen;
-import com.denizenscript.denizen.nms.NMSVersion;
+import com.denizenscript.denizen.nms.NMSHandler;
 import com.denizenscript.denizen.objects.*;
 import com.denizenscript.denizen.utilities.Utilities;
 import com.denizenscript.denizen.utilities.command.TabCompleteHelper;
-import com.denizenscript.denizencore.utilities.debugging.Debug;
-import com.denizenscript.denizen.nms.NMSHandler;
 import com.denizenscript.denizencore.exceptions.InvalidArgumentsException;
-import com.denizenscript.denizencore.objects.*;
+import com.denizenscript.denizencore.objects.Argument;
+import com.denizenscript.denizencore.objects.ObjectTag;
 import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.objects.core.ListTag;
 import com.denizenscript.denizencore.objects.core.ScriptTag;
@@ -17,6 +16,7 @@ import com.denizenscript.denizencore.scripts.commands.AbstractCommand;
 import com.denizenscript.denizencore.scripts.commands.Holdable;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizencore.utilities.ScriptUtilities;
+import com.denizenscript.denizencore.utilities.debugging.Debug;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -253,6 +253,7 @@ public class ModifyBlockCommand extends AbstractCommand implements Listener, Hol
         for (MaterialTag mat : materialList) {
             if (!mat.getMaterial().isBlock()) {
                 Debug.echoError("Material '" + mat.getMaterial().name() + "' is not a block material");
+                scriptEntry.setFinished(true);
                 return;
             }
         }
@@ -275,13 +276,16 @@ public class ModifyBlockCommand extends AbstractCommand implements Listener, Hol
         final List<Float> percs = percentages;
         if (locations == null && location_list == null) {
             Debug.echoError("Must specify a valid location!");
+            scriptEntry.setFinished(true);
             return;
         }
         if ((location_list != null && location_list.isEmpty()) || (locations != null && locations.isEmpty())) {
+            scriptEntry.setFinished(true);
             return;
         }
         if (materialList.isEmpty()) {
             Debug.echoError("Must specify a valid material!");
+            scriptEntry.setFinished(true);
             return;
         }
         no_physics = !doPhysics;
@@ -349,6 +353,7 @@ public class ModifyBlockCommand extends AbstractCommand implements Listener, Hol
                 loc = getLocAt(location_list, 0, scriptEntry);
             }
             if (isLocationBad(scriptEntry, loc)) {
+                scriptEntry.setFinished(true);
                 return;
             }
             boolean was_static = preSetup(loc);
@@ -356,6 +361,7 @@ public class ModifyBlockCommand extends AbstractCommand implements Listener, Hol
             if (locations != null) {
                 for (LocationTag obj : locations) {
                     if (isLocationBad(scriptEntry, obj)) {
+                        scriptEntry.setFinished(true);
                         return;
                     }
                     handleLocation(obj, index, materialList, doPhysics, natural, radius, height, depth, percentages, sourcePlayer, scriptEntry);
@@ -366,6 +372,7 @@ public class ModifyBlockCommand extends AbstractCommand implements Listener, Hol
                 for (int i = 0; i < location_list.size(); i++) {
                     LocationTag obj = getLocAt(location_list, i, scriptEntry);
                     if (isLocationBad(scriptEntry, obj)) {
+                        scriptEntry.setFinished(true);
                         return;
                     }
                     handleLocation(obj, index, materialList, doPhysics, natural, radius, height, depth, percentages, sourcePlayer, scriptEntry);
@@ -395,6 +402,15 @@ public class ModifyBlockCommand extends AbstractCommand implements Listener, Hol
         no_physics = false;
     }
 
+    <T extends Event & Cancellable> boolean callEvent(T event, ScriptEntry scriptEntry) {
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled()) {
+            Debug.echoDebug(scriptEntry, "Source event cancelled, not changing block.");
+            return true;
+        }
+        return false;
+    }
+
     void handleLocation(LocationTag location, int index, List<MaterialTag> materialList, boolean doPhysics,
                         ItemTag natural, int radius, int height, int depth, List<Float> percents, Player source, ScriptEntry entry) {
         MaterialTag material;
@@ -417,25 +433,25 @@ public class ModifyBlockCommand extends AbstractCommand implements Listener, Hol
         location = location.getBlockLocation();
         World world = location.getWorld();
         if (source != null) {
-            Event event;
             if (material.getMaterial() == Material.AIR) {
-                event = new BlockBreakEvent(location.getBlock(), source);
+                if (callEvent(new BlockBreakEvent(location.getBlock(), source), entry)) {
+                    return;
+                }
+                setBlock(location, material, doPhysics, natural);
             }
             else {
                 Block block = location.getBlock();
-                BlockState state = NMSHandler.blockHelper.generateBlockState(block, material.getMaterial());
-                state.setBlockData(material.getModernData());
-                event = new BlockPlaceEvent(block, state, block, new ItemTag(material, 1).getItemStack(), source, true, EquipmentSlot.HAND);
-            }
-            Bukkit.getPluginManager().callEvent(event);
-            if (((Cancellable) event).isCancelled()) {
-                if (entry.dbCallShouldDebug()) {
-                    Debug.echoDebug(entry, "Source event cancelled, not changing block.");
+                BlockState originalState = block.getState();
+                setBlock(location, material, doPhysics, natural);
+                if (callEvent(new BlockPlaceEvent(block, originalState, block, new ItemStack(material.getMaterial()), source, true, EquipmentSlot.HAND), entry)) {
+                    originalState.update(true, doPhysics);
+                    return;
                 }
-                return;
             }
         }
-        setBlock(location, material, doPhysics, natural);
+        else {
+            setBlock(location, material, doPhysics, natural);
+        }
         if (radius != 0) {
             for (int x = 0; x < 2 * radius + 1; x++) {
                 for (int z = 0; z < 2 * radius + 1; z++) {
@@ -476,12 +492,10 @@ public class ModifyBlockCommand extends AbstractCommand implements Listener, Hol
             return;
         }
         if (natural != null && material.getMaterial() == Material.AIR) {
-            if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_17)) {
-                int xp = NMSHandler.blockHelper.getExpDrop(location.getBlock(), natural.getItemStack());
-                if (xp > 0) {
-                    ExperienceOrb orb = (ExperienceOrb) location.getWorld().spawnEntity(location, EntityType.EXPERIENCE_ORB);
-                    orb.setExperience(xp);
-                }
+            int xp = NMSHandler.blockHelper.getExpDrop(location.getBlock(), natural.getItemStack());
+            if (xp > 0) {
+                ExperienceOrb orb = (ExperienceOrb) location.getWorld().spawnEntity(location, EntityType.EXPERIENCE_ORB);
+                orb.setExperience(xp);
             }
             location.getBlock().breakNaturally(natural.getItemStack());
         }

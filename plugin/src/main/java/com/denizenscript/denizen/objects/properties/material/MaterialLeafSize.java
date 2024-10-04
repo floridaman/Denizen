@@ -29,13 +29,13 @@ public class MaterialLeafSize implements Property {
             "leaf_size"
     };
 
-    private MaterialLeafSize(MaterialTag _material) {
+    public MaterialLeafSize(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.leaf_size>

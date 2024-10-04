@@ -29,13 +29,13 @@ public class MaterialWaterlogged implements Property {
             "waterlogged"
     };
 
-    private MaterialWaterlogged(MaterialTag _material) {
+    public MaterialWaterlogged(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.waterlogged>

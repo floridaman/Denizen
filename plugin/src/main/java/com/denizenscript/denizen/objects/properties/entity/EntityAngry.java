@@ -38,7 +38,7 @@ public class EntityAngry implements Property {
             "angry"
     };
 
-    private EntityAngry(EntityTag entity) {
+    public EntityAngry(EntityTag entity) {
         this.entity = entity;
     }
 
@@ -63,7 +63,7 @@ public class EntityAngry implements Property {
         return "angry";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.angry>

@@ -42,13 +42,13 @@ public class MaterialSides implements Property {
             "sides", "heights"
     };
 
-    private MaterialSides(MaterialTag _material) {
+    public MaterialSides(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.heights>

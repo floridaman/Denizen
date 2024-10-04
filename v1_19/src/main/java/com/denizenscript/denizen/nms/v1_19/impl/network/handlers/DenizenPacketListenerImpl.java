@@ -32,7 +32,7 @@ public class DenizenPacketListenerImpl extends AbstractListenerPlayInImpl {
 
     @Override
     public void handlePlayerInput(final ServerboundPlayerInputPacket packet) {
-        if (!PlayerSteersEntityScriptEvent.instance.enabled) {
+        if (!PlayerSteersEntityScriptEvent.instance.eventData.isEnabled) {
             super.handlePlayerInput(packet);
             return;
         }
@@ -102,7 +102,6 @@ public class DenizenPacketListenerImpl extends AbstractListenerPlayInImpl {
         if (fakeSignExpected != null && packet.getPos().equals(fakeSignExpected)) {
             fakeSignExpected = null;
             PlayerChangesSignScriptEvent evt = (PlayerChangesSignScriptEvent) PlayerChangesSignScriptEvent.instance.clone();
-            evt.cancelled = false;
             evt.material = new MaterialTag(org.bukkit.Material.OAK_WALL_SIGN);
             evt.location = new LocationTag(player.getBukkitEntity().getLocation());
             LocationTag loc = evt.location.clone();

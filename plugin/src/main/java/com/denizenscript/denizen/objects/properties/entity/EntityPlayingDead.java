@@ -29,13 +29,13 @@ public class EntityPlayingDead implements Property {
         "playing_dead"
     };
 
-    private EntityPlayingDead(EntityTag _entity) {
+    public EntityPlayingDead(EntityTag _entity) {
         entity = _entity;
     }
 
     EntityTag entity;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.playing_dead>

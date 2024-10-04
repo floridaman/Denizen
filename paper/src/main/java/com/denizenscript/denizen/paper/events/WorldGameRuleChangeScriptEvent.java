@@ -43,7 +43,7 @@ public class WorldGameRuleChangeScriptEvent extends BukkitScriptEvent implements
     // <context.command_minecart> returns the EntityTag of the command minecart (if the command was run from one).
     //
     // @Determine
-    // "VALUE:" + ElementTag(Number) or ElementTag(Boolean) to set the value of the GameRule.
+    // "VALUE:<ElementTag(Number)>" or ElementTag(Boolean) to set the value of the GameRule.
     //
     // @Player when the sender of the command is a player.
     //
@@ -61,7 +61,7 @@ public class WorldGameRuleChangeScriptEvent extends BukkitScriptEvent implements
 
     @Override
     public boolean matches(ScriptPath path) {
-        if (path.eventArgLowerAt(2).equals("in") && !world.tryAdvancedMatcher(path.eventArgLowerAt(3))) {
+        if (path.eventArgLowerAt(2).equals("in") && !path.tryArgObject(3, world)) {
             return false;
         }
         if (!runGenericSwitchCheck(path, "gamerule", event.getGameRule().getName())) {

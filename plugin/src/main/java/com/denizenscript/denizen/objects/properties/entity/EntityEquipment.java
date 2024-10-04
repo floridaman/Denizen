@@ -34,7 +34,7 @@ public class EntityEquipment implements Property {
             "equipment"
     };
 
-    private EntityEquipment(EntityTag ent) {
+    public EntityEquipment(EntityTag ent) {
         entity = ent;
     }
 
@@ -50,7 +50,7 @@ public class EntityEquipment implements Property {
         return "equipment";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.equipment>

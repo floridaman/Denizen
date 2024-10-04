@@ -17,7 +17,6 @@ import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.objects.ArgumentHelper;
 import com.denizenscript.denizencore.objects.ObjectTag;
 import com.denizenscript.denizencore.objects.core.ScriptTag;
-import com.denizenscript.denizencore.scripts.commands.queue.DetermineCommand;
 import com.denizenscript.denizencore.tags.TagManager;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import org.bukkit.Bukkit;
@@ -364,13 +363,17 @@ public class ChatTrigger extends AbstractTrigger implements Listener {
     }
 
     @EventHandler
-    public void syncChatTrigger(final PlayerChatEvent event) {
+    public void syncChatTrigger(PlayerChatEvent event) {
         if (event.isCancelled()) {
             return;
         }
         if (Settings.chatAsynchronous()) {
             return;
         }
+        chatTriggerInternal(event);
+    }
+
+    public void chatTriggerInternal(PlayerChatEvent event) {
         ChatContext chat = process(event.getPlayer(), event.getMessage());
         if (chat.wasTriggered()) {
             event.setCancelled(true);
@@ -403,7 +406,7 @@ public class ChatTrigger extends AbstractTrigger implements Listener {
         }
 
         public String getChanges() {
-            return changed_text != null ? changed_text : DetermineCommand.DETERMINE_NONE;
+            return changed_text != null ? changed_text : "none";
         }
 
         public boolean wasTriggered() {

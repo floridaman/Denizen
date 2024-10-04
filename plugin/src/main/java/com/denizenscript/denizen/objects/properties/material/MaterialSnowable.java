@@ -29,13 +29,13 @@ public class MaterialSnowable implements Property {
             "snowy"
     };
 
-    private MaterialSnowable(MaterialTag _material) {
+    public MaterialSnowable(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.snowy>

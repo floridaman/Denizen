@@ -1,111 +1,92 @@
 package com.denizenscript.denizen.objects.properties.item;
 
 import com.denizenscript.denizen.nms.NMSHandler;
+import com.denizenscript.denizen.nms.NMSVersion;
 import com.denizenscript.denizen.nms.util.jnbt.*;
 import com.denizenscript.denizen.objects.ItemTag;
-import com.denizenscript.denizencore.utilities.debugging.Debug;
+import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
 import com.denizenscript.denizencore.objects.Mechanism;
 import com.denizenscript.denizencore.objects.ObjectTag;
 import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.objects.core.ListTag;
 import com.denizenscript.denizencore.objects.core.MapTag;
-import com.denizenscript.denizencore.objects.properties.Property;
-import com.denizenscript.denizencore.tags.Attribute;
+import com.denizenscript.denizencore.objects.properties.PropertyParser;
 import com.denizenscript.denizencore.tags.TagContext;
+import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizencore.utilities.text.StringHolder;
 import org.bukkit.Material;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-public class ItemRawNBT implements Property {
+public class ItemRawNBT extends ItemProperty<MapTag> {
 
-    public static boolean describes(ObjectTag item) {
+    public static boolean describes(ItemTag item) {
         // All items can have raw NBT
-        return item instanceof ItemTag && ((ItemTag) item).getBukkitMaterial() != Material.AIR;
+        return item.getBukkitMaterial() != Material.AIR;
     }
 
-    public static ItemRawNBT getFrom(ObjectTag _item) {
-        if (!describes(_item)) {
-            return null;
-        }
-        else {
-            return new ItemRawNBT((ItemTag) _item);
-        }
+    public ItemRawNBT(ItemTag item) {
+        this.object = item;
     }
 
-    public static final String[] handledTags = new String[] {
-            "raw_nbt", "all_raw_nbt"
+    public static String[] defaultNbtKeys = new String[] {
+        // Denizen
+        "Denizen Item Script", "DenizenItemScript", "Denizen NBT", "Denizen",
+        // General
+        "Damage", "Unbreakable", "CanDestroy", "CustomModelData", "trim",
+        // Display data
+        "display", "HideFlags",
+        // Block
+        "CanPlaceOn", "BlockEntityTag", "BlockStateTag",
+        // Enchanting
+        "Enchantments", "StoredEnchantments", "RepairCost",
+        // Attributes
+        "AttributeModifiers",
+        // Potions
+        "CustomPotionEffects", "Potion", "CustomPotionColor",
+        // Crossbow specific
+        "ChargedProjectiles", "Charged",
+        // Book specific
+        "resolved", "generation", "author", "title", "pages",
+        // Player Head specific
+        "SkullOwner",
+        // Firework specific
+        "Explosion", "Fireworks",
+        //"EntityTag", // Special handling
+        // Bucket specific
+        //"BucketVariantTag", // Temporarily sent through as raw due to lack of property coverage
+        // Map specific
+        "map", "map_scale_direction",
+        //"Decorations", // Temporarily sent through due to apparent usage in certain vanilla cases not covered by properties
+        // Stew specific
+        "Effects",
+        // Lodestone compass specific
+        //"LodestoneDimension", "LodestonePos", // Temporarily sent through due to "Dimension" inconsistency, and compatibility with unloaded worlds
+        "LodestoneTracked",
+        // Bundle specific
+        "Items",
+        // Goat Horn specific
+        "instrument"
     };
-
-    public static final String[] handledMechs = new String[] {
-            "raw_nbt"
-    };
-
-    private ItemRawNBT(ItemTag _item) {
-        item = _item;
-    }
-
-    public static StringHolder[] defaultNbtKeys;
-
-    static {
-        String[] defaultNbtKeysRaw = new String[] {
-                // Denizen
-                "Denizen Item Script", "DenizenItemScript", "Denizen NBT", "Denizen",
-                // General
-                "Damage", "Unbreakable", "CanDestroy", "CustomModelData",
-                // Display data
-                "display", "HideFlags",
-                // Block
-                "CanPlaceOn", "BlockEntityTag", "BlockStateTag",
-                // Enchanting
-                "Enchantments", "StoredEnchantments", "RepairCost",
-                // Attributes
-                "AttributeModifiers",
-                // Potions
-                "CustomPotionEffects", "Potion", "CustomPotionColor",
-                // Crossbow specific
-                "ChargedProjectiles", "Charged",
-                // Book specific
-                "resolved", "generation", "author", "title", "pages",
-                // Player Head specific
-                "SkullOwner",
-                // Firework specific
-                "Explosion", "Fireworks",
-                //"EntityTag", // Special handling
-                // Bucket specific
-                //"BucketVariantTag", // Temporarily sent through as raw due to lack of property coverage
-                // Map specific
-                "map", "map_scale_direction",
-                //"Decorations", // Temporarily sent through due to apparent usage in certain vanilla cases not covered by properties
-                // Stew specific
-                "Effects",
-                // Lodestone compass specific
-                //"LodestoneDimension", "LodestonePos", // Temporarily sent through due to "Dimension" inconsistency, and compatibility with unloaded worlds
-                "LodestoneTracked",
-                // Bundle specific
-                "Items"
-        };
-        defaultNbtKeys = new StringHolder[defaultNbtKeysRaw.length];
-        for (int i = 0; i < defaultNbtKeysRaw.length; i++) {
-            defaultNbtKeys[i] = new StringHolder(defaultNbtKeysRaw[i]);
-        }
-    }
 
     public MapTag getNonDefaultNBTMap() {
         MapTag result = getFullNBTMap();
-        for (StringHolder key : defaultNbtKeys) {
-            result.map.remove(key);
+        for (String key : defaultNbtKeys) {
+            result.remove(key);
         }
-        if (item.getBukkitMaterial() == Material.ITEM_FRAME) {
+        if (getMaterial() == Material.ITEM_FRAME) {
             MapTag entityMap = (MapTag) result.getObject("EntityTag");
             if (entityMap != null) {
                 entityMap.putObject("Invisible", null);
-                if (entityMap.map.isEmpty()) {
+                if (entityMap.isEmpty()) {
                     result.putObject("EntityTag", null);
                 }
             }
         }
-        if (item.getBukkitMaterial() == Material.ARMOR_STAND) {
+        if (getMaterial() == Material.ARMOR_STAND) {
             MapTag entityMap = (MapTag) result.getObject("EntityTag");
             if (entityMap != null) {
                 entityMap.putObject("Pose", null);
@@ -114,7 +95,7 @@ public class ItemRawNBT implements Property {
                 entityMap.putObject("Marker", null);
                 entityMap.putObject("Invisible", null);
                 entityMap.putObject("ShowArms", null);
-                if (entityMap.map.isEmpty()) {
+                if (entityMap.isEmpty()) {
                     result.putObject("EntityTag", null);
                 }
             }
@@ -123,7 +104,7 @@ public class ItemRawNBT implements Property {
     }
 
     public MapTag getFullNBTMap() {
-        CompoundTag compoundTag = NMSHandler.itemHelper.getNbtData(item.getItemStack());
+        CompoundTag compoundTag = NMSHandler.itemHelper.getNbtData(getItemStack());
         return (MapTag) jnbtTagToObject(compoundTag);
     }
 
@@ -131,9 +112,9 @@ public class ItemRawNBT implements Property {
     // @name Raw NBT Encoding
     // @group Useful Lists
     // @description
-    // The item Raw_NBT property encodes and decodes raw NBT data.
-    // For the sake of inter-compatibility, a special standard format is used to preserve data types.
-    // This system exists in Denizen primarily for the sake of compatibility with external plugins.
+    // Several things in Minecraft use NBT to store data, such as items and entities.
+    // For the sake of inter-compatibility, a special standard format is used in Denizen to preserve data types.
+    // This system exists in Denizen primarily for the sake of compatibility with external plugins/systems.
     // It should not be used in any scripts that don't rely on data from external plugins.
     //
     // NBT Tags are encoded as follows:
@@ -156,7 +137,7 @@ public class ItemRawNBT implements Property {
         if (object.startsWith("map@")) {
             MapTag map = MapTag.valueOf(object, context);
             Map<String, Tag> result = new LinkedHashMap<>();
-            for (Map.Entry<StringHolder, ObjectTag> entry : map.map.entrySet()) {
+            for (Map.Entry<StringHolder, ObjectTag> entry : map.entrySet()) {
                 try {
                     result.put(entry.getKey().str, convertObjectToNbt(entry.getValue().toString(), context, path + "." + entry.getKey().str));
                 }
@@ -294,27 +275,75 @@ public class ItemRawNBT implements Property {
         }
     }
 
-    ItemTag item;
+    @Override
+    public MapTag getPropertyValue() {
+        if (NMSHandler.getVersion().isAtMost(NMSVersion.v1_19)) {
+            MapTag nonDefaultNBT = getNonDefaultNBTMap();
+            return nonDefaultNBT.isEmpty() ? null : nonDefaultNBT;
+        }
+        return null;
+    }
 
     @Override
-    public ObjectTag getObjectAttribute(Attribute attribute) {
-
-        if (attribute == null) {
-            return null;
+    public void setPropertyValue(MapTag value, Mechanism mechanism) {
+        if (NMSHandler.getVersion().isAtMost(NMSVersion.v1_19)) {
+            setFullNBT(object, value, mechanism.context, true);
+            return;
         }
+        BukkitImplDeprecations.oldNbtProperty.warn(mechanism.context);
+        CompoundTag oldNbtData;
+        try {
+            oldNbtData = (CompoundTag) ItemRawNBT.convertObjectToNbt(value.identify(), mechanism.context, "(item)");
+        }
+        catch (Exception ex) {
+            mechanism.echoError("Invalid NBT data specified:");
+            Debug.echoError(ex);
+            return;
+        }
+        if (oldNbtData == null) {
+            mechanism.echoError("Invalid NBT data specified.");
+            return;
+        }
+        setItemStack(NMSHandler.itemHelper.setPartialOldNbt(getItemStack(), oldNbtData));
+    }
+
+    public static void register() {
 
         // <--[tag]
         // @attribute <ItemTag.raw_nbt>
         // @returns MapTag
         // @mechanism ItemTag.raw_nbt
-        // @group properties
+        // @deprecated use 'ItemTag.custom_data'
         // @description
         // Returns a map of all non-default raw NBT on this item.
         // Refer to format details at <@link language Raw NBT Encoding>.
+        // Deprecated in favor of <@link tag ItemTag.custom_data> on MC 1.20+.
         // -->
-        if (attribute.startsWith("raw_nbt")) {
-            return getNonDefaultNBTMap().getObjectAttribute(attribute.fulfill(1));
-        }
+        PropertyParser.registerTag(ItemRawNBT.class, MapTag.class, "raw_nbt", (attribute, prop) -> {
+            if (NMSHandler.getVersion().isAtMost(NMSVersion.v1_19)) {
+                return prop.getPropertyValue();
+            }
+            BukkitImplDeprecations.oldNbtProperty.warn(attribute.context);
+            return new ItemCustomData(prop.object).getPropertyValue();
+        });
+
+        // <--[mechanism]
+        // @object ItemTag
+        // @name raw_nbt
+        // @input MapTag
+        // @deprecated use 'ItemTag.custom_data'
+        // @description
+        // Sets the given map of raw NBT keys onto this item.
+        // Note that the input format must be strictly perfect.
+        // Refer to <@link language Raw NBT Encoding> for explanation of the input format.
+        // Deprecated in favor of <@link property ItemTag.custom_data> on MC 1.20+.
+        // @tags
+        // <ItemTag.raw_nbt>
+        // <ItemTag.all_raw_nbt>
+        // -->
+        PropertyParser.registerMechanism(ItemRawNBT.class, MapTag.class, "raw_nbt", (prop, mechanism, value) -> {
+            prop.setPropertyValue(value, mechanism);
+        });
 
         // <--[tag]
         // @attribute <ItemTag.all_raw_nbt>
@@ -325,22 +354,10 @@ public class ItemRawNBT implements Property {
         // Returns a map of all raw NBT on this item, including default values.
         // Refer to format details at <@link language Raw NBT Encoding>.
         // -->
-        if (attribute.startsWith("all_raw_nbt")) {
-            return getFullNBTMap().getObjectAttribute(attribute.fulfill(1));
-        }
-
-        return null;
-    }
-
-    @Override
-    public String getPropertyString() {
-        MapTag nbt = getNonDefaultNBTMap();
-        if (!nbt.map.isEmpty()) {
-            return nbt.identify();
-        }
-        else {
-            return null;
-        }
+        // TODO: deprecate when raw properties property is added
+        PropertyParser.registerTag(ItemRawNBT.class, MapTag.class, "all_raw_nbt", (attribute, prop) -> {
+            return prop.getFullNBTMap();
+        });
     }
 
     @Override
@@ -351,7 +368,7 @@ public class ItemRawNBT implements Property {
     public void setFullNBT(ItemTag item, MapTag input, TagContext context, boolean retainOld) {
         CompoundTag compoundTag = retainOld ? NMSHandler.itemHelper.getNbtData(item.getItemStack()) : null;
         Map<String, Tag> result = compoundTag == null ? new LinkedHashMap<>() : new LinkedHashMap<>(compoundTag.getValue());
-        for (Map.Entry<StringHolder, ObjectTag> entry : input.map.entrySet()) {
+        for (Map.Entry<StringHolder, ObjectTag> entry : input.entrySet()) {
             try {
                 Tag tag = convertObjectToNbt(entry.getValue().toString(), context, "(item).");
                 if (tag != null) {
@@ -366,26 +383,5 @@ public class ItemRawNBT implements Property {
         }
         compoundTag = NMSHandler.instance.createCompoundTag(result);
         item.setItemStack(NMSHandler.itemHelper.setNbtData(item.getItemStack(), compoundTag));
-    }
-
-    @Override
-    public void adjust(Mechanism mechanism) {
-
-        // <--[mechanism]
-        // @object ItemTag
-        // @name raw_nbt
-        // @input MapTag
-        // @description
-        // Sets the given map of raw NBT keys onto this item.
-        // Note that the input format must be strictly perfect.
-        // Refer to <@link language Raw NBT Encoding> for explanation of the input format.
-        // @tags
-        // <ItemTag.raw_nbt>
-        // <ItemTag.all_raw_nbt>
-        // -->
-        if (mechanism.matches("raw_nbt") && mechanism.requireObject(MapTag.class)) {
-            MapTag input = mechanism.valueAsType(MapTag.class);
-            setFullNBT(item, input, mechanism.context, true);
-        }
     }
 }

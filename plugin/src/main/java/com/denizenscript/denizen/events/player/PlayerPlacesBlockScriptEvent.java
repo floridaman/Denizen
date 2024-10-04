@@ -1,10 +1,13 @@
 package com.denizenscript.denizen.events.player;
 
-import com.denizenscript.denizen.objects.*;
-import com.denizenscript.denizen.utilities.implementation.BukkitScriptEntryData;
 import com.denizenscript.denizen.events.BukkitScriptEvent;
-import com.denizenscript.denizencore.objects.core.ElementTag;
+import com.denizenscript.denizen.objects.EntityTag;
+import com.denizenscript.denizen.objects.ItemTag;
+import com.denizenscript.denizen.objects.LocationTag;
+import com.denizenscript.denizen.objects.MaterialTag;
+import com.denizenscript.denizen.utilities.implementation.BukkitScriptEntryData;
 import com.denizenscript.denizencore.objects.ObjectTag;
+import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.scripts.ScriptEntryData;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -23,6 +26,7 @@ public class PlayerPlacesBlockScriptEvent extends BukkitScriptEvent implements L
     //
     // @Switch using:<hand_type> to only process the event if the player is using the specified hand type (HAND or OFF_HAND).
     // @Switch against:<location> to only process the event if block that this new block is being placed against matches the specified LocationTag matcher.
+    // @Switch type:<material> to only process the event if the block placed matches the MaterialTag matcher input.
     //
     // @Cancellable true
     //
@@ -47,23 +51,28 @@ public class PlayerPlacesBlockScriptEvent extends BukkitScriptEvent implements L
     // @Example
     // on player places cactus against:sand:
     //
+    // @Example
+    // # This example process the event only if the player places any block that isn't tnt.
+    // on player places block type:!tnt:
+    // - announce "<player.name> has placed a block that isn't TNT. Lucky!"
+    //
     // -->
 
     public PlayerPlacesBlockScriptEvent() {
         registerCouldMatcher("player places <material>");
-        registerSwitches("using", "against");
+        registerSwitches("using", "against", "type");
     }
 
+    public BlockPlaceEvent event;
     public LocationTag location, against;
     public MaterialTag material;
     public ElementTag hand;
     public ItemTag item_in_hand;
-    public BlockPlaceEvent event;
 
     @Override
     public boolean matches(ScriptPath path) {
         String mat = path.eventArgLowerAt(2);
-        if (!item_in_hand.tryAdvancedMatcher(mat) && !material.tryAdvancedMatcher(mat)) {
+        if (!item_in_hand.tryAdvancedMatcher(mat, path.context) && !material.tryAdvancedMatcher(mat, path.context)) {
             return false;
         }
         if (!runGenericSwitchCheck(path, "using", hand.asString())) {
@@ -73,6 +82,9 @@ public class PlayerPlacesBlockScriptEvent extends BukkitScriptEvent implements L
             return false;
         }
         if (!path.tryObjectSwitch("against", against)) {
+            return false;
+        }
+        if (!path.tryObjectSwitch("type", material)) {
             return false;
         }
         return super.matches(path);
@@ -86,18 +98,12 @@ public class PlayerPlacesBlockScriptEvent extends BukkitScriptEvent implements L
     @Override
     public ObjectTag getContext(String name) {
         switch (name) {
-            case "location":
-                return location;
-            case "material":
-                return material;
-            case "old_material":
-                return new MaterialTag(event.getBlockReplacedState());
-            case "item_in_hand":
-                return item_in_hand;
-            case "hand":
-                return hand;
-            case "against":
-                return against;
+            case "location": return location;
+            case "material": return material;
+            case "old_material": return new MaterialTag(event.getBlockReplacedState());
+            case "item_in_hand": return item_in_hand;
+            case "hand": return hand;
+            case "against": return against;
         }
         return super.getContext(name);
     }

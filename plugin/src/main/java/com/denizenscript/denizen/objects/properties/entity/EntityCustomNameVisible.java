@@ -26,7 +26,7 @@ public class EntityCustomNameVisible implements Property {
             "custom_name_visibility", "custom_name_visible"
     };
 
-    private EntityCustomNameVisible(EntityTag ent) {
+    public EntityCustomNameVisible(EntityTag ent) {
         entity = ent;
     }
 
@@ -42,7 +42,7 @@ public class EntityCustomNameVisible implements Property {
         return "custom_name_visible";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.custom_name_visible>

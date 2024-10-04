@@ -29,20 +29,22 @@ public class PlayerReceivesTablistUpdateScriptEvent extends BukkitScriptEvent {
     // @Cancellable true
     //
     // @Context
-    // <context.mode> returns the update mode: 'add', 'remove', 'update_gamemode', 'update_latency', or 'update_display'.
+    // <context.mode> returns the update mode: 'add', 'remove', 'initialize_chat', 'update_gamemode', 'update_latency', 'update_listed', or 'update_display'. As of 1.19.3, you can also receive update combos like "update_gamemode|update_latency".
     // <context.uuid> returns the packet's associated UUID.
     // <context.name> returns the packet's associated name (if any).
     // <context.display> returns the packet's associated display name (if any).
     // <context.latency> returns the packet's associated latency (if any).
     // <context.gamemode> returns the packet's associated gamemode (if any).
     // <context.skin_blob> returns the packet's associated skin blob (if any).
+    // <context.listed> returns true if the entry should be listed in the tab list, or false if not.
     //
     // @Determine
-    // "LATENCY:" + ElementTag(Number) to change the latency.
-    // "NAME:" + ElementTag to change the name.
-    // "DISPLAY:" + ElementTag to change the display name. 'name', 'display' and 'cancelled' determinations require 'Allow restricted actions' in Denizen/config.yml
-    // "GAMEMODE:" + ElementTag to change the gamemode.
-    // "SKIN_BLOB:" + ElementTag to change the skin blob.
+    // "LATENCY:<ElementTag(Number)>" to change the latency.
+    // "NAME:<ElementTag>" to change the name.
+    // "DISPLAY:<ElementTag>" to change the display name. 'name', 'display' and 'cancelled' determinations require 'Allow restricted actions' in Denizen/config.yml
+    // "GAMEMODE:<ElementTag>" to change the gamemode.
+    // "SKIN_BLOB:<ElementTag>" to change the skin blob.
+    // "LISTED:<ElementTag(Boolean)>" to change whether the entry is listed.
     //
     // @Player Always.
     //
@@ -58,7 +60,7 @@ public class PlayerReceivesTablistUpdateScriptEvent extends BukkitScriptEvent {
 
     public static class TabPacketData {
 
-        public TabPacketData(String mode, UUID id, String name, String display, String gamemode, String texture, String signature, int latency) {
+        public TabPacketData(String mode, UUID id, boolean isListed, String name, String display, String gamemode, String texture, String signature, int latency) {
             this.mode = mode;
             this.id = id;
             this.name = name;
@@ -67,6 +69,7 @@ public class PlayerReceivesTablistUpdateScriptEvent extends BukkitScriptEvent {
             this.texture = texture;
             this.signature = signature;
             this.latency = latency;
+            this.isListed = isListed;
         }
 
         public UUID id;
@@ -74,6 +77,8 @@ public class PlayerReceivesTablistUpdateScriptEvent extends BukkitScriptEvent {
         public String mode, name, display, gamemode, texture, signature;
 
         public int latency;
+
+        public boolean isListed;
 
         public boolean cancelled = false;
 
@@ -84,17 +89,10 @@ public class PlayerReceivesTablistUpdateScriptEvent extends BukkitScriptEvent {
 
     public TabPacketData data;
 
-    public static boolean enabled = false;
-
     @Override
     public void init() {
         NetworkInterceptHelper.enable();
-        enabled = true;
-    }
-
-    @Override
-    public void destroy() {
-        enabled = false;
+        super.init();
     }
 
     @Override
@@ -163,6 +161,11 @@ public class PlayerReceivesTablistUpdateScriptEvent extends BukkitScriptEvent {
                 data.signature = blob.substring(semicolon + 1);
                 return true;
             }
+            else if (determinationLow.startsWith("listed:")) {
+                data.modified = true;
+                data.isListed = new ElementTag(determination.substring("listed:".length())).asBoolean();
+                return true;
+            }
         }
         return super.applyDetermination(path, determinationObj);
     }
@@ -182,6 +185,7 @@ public class PlayerReceivesTablistUpdateScriptEvent extends BukkitScriptEvent {
             case "gamemode": return new ElementTag(data.gamemode);
             case "skin_blob": return new ElementTag(data.texture + ";" + data.signature);
             case "latency": return new ElementTag(data.latency);
+            case "listed": return new ElementTag(data.isListed);
         }
         return super.getContext(name);
     }

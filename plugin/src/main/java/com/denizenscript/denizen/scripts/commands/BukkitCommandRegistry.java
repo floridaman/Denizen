@@ -2,20 +2,22 @@ package com.denizenscript.denizen.scripts.commands;
 
 import com.denizenscript.denizen.nms.NMSHandler;
 import com.denizenscript.denizen.nms.NMSVersion;
-import com.denizenscript.denizen.scripts.commands.core.*;
+import com.denizenscript.denizen.scripts.commands.core.CooldownCommand;
+import com.denizenscript.denizen.scripts.commands.core.ResetCommand;
+import com.denizenscript.denizen.scripts.commands.core.ZapCommand;
 import com.denizenscript.denizen.scripts.commands.entity.*;
 import com.denizenscript.denizen.scripts.commands.item.*;
 import com.denizenscript.denizen.scripts.commands.npc.*;
 import com.denizenscript.denizen.scripts.commands.player.*;
 import com.denizenscript.denizen.scripts.commands.server.*;
 import com.denizenscript.denizen.scripts.commands.world.*;
-import com.denizenscript.denizencore.DenizenCore;
-import com.denizenscript.denizencore.utilities.CoreConfiguration;
-import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizen.utilities.depends.Depends;
+import com.denizenscript.denizencore.DenizenCore;
 import com.denizenscript.denizencore.exceptions.InvalidArgumentsException;
 import com.denizenscript.denizencore.scripts.ScriptEntry;
 import com.denizenscript.denizencore.scripts.commands.AbstractCommand;
+import com.denizenscript.denizencore.utilities.CoreConfiguration;
+import com.denizenscript.denizencore.utilities.debugging.Debug;
 
 public class BukkitCommandRegistry {
 
@@ -57,6 +59,7 @@ public class BukkitCommandRegistry {
         registerCommand(ActionCommand.class);
         registerCommand(AnchorCommand.class);
         registerCommand(AssignmentCommand.class);
+        registerCommand(NPCBossBarCommand.class);
         registerCommand(BreakCommand.class);
         registerCommand(CreateCommand.class);
         registerCommand(DespawnCommand.class);
@@ -91,6 +94,7 @@ public class BukkitCommandRegistry {
         registerCommand(CastCommand.class);
         registerCommand(EquipCommand.class);
         registerCommand(FakeEquipCommand.class);
+        registerCommand(FakeInternalDataCommand.class);
         registerCommand(FeedCommand.class);
         registerCommand(FlyCommand.class);
         registerCommand(FollowCommand.class);
@@ -118,8 +122,6 @@ public class BukkitCommandRegistry {
         registerCommand(GiveCommand.class);
         registerCommand(InventoryCommand.class);
         registerCommand(MapCommand.class);
-        registerCommand(NBTCommand.class);
-        registerCommand(ScribeCommand.class);
         registerCommand(TakeCommand.class);
         // player
         registerCommand(ActionBarCommand.class);
@@ -127,9 +129,7 @@ public class BukkitCommandRegistry {
         registerCommand(BlockCrackCommand.class);
         registerCommand(ClickableCommand.class);
         registerCommand(CompassCommand.class);
-        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_17)) {
-            registerCommand(DebugBlockCommand.class);
-        }
+        registerCommand(DebugBlockCommand.class);
         registerCommand(DisguiseCommand.class);
         registerCommand(ExperienceCommand.class);
         registerCommand(FakeSpawnCommand.class);
@@ -175,6 +175,9 @@ public class BukkitCommandRegistry {
         registerCommand(SignCommand.class);
         registerCommand(StrikeCommand.class);
         registerCommand(SwitchCommand.class);
+        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_20)) {
+            registerCommand(TickCommand.class);
+        }
         registerCommand(TimeCommand.class);
         registerCommand(WeatherCommand.class);
         registerCommand(WorldBorderCommand.class);

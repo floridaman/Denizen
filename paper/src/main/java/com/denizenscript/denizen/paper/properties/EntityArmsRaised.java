@@ -2,7 +2,6 @@ package com.denizenscript.denizen.paper.properties;
 
 import com.denizenscript.denizen.objects.EntityTag;
 import com.denizenscript.denizen.utilities.BukkitImplDeprecations;
-import com.denizenscript.denizencore.objects.Mechanism;
 import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.objects.properties.Property;
 import com.denizenscript.denizencore.objects.ObjectTag;
@@ -26,7 +25,7 @@ public class EntityArmsRaised implements Property {
         }
     }
 
-    private EntityArmsRaised(EntityTag _entity) {
+    public EntityArmsRaised(EntityTag _entity) {
         entity = _entity;
     }
 
@@ -42,7 +41,7 @@ public class EntityArmsRaised implements Property {
         return "arms_raised";
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.arms_raised>
@@ -64,6 +63,7 @@ public class EntityArmsRaised implements Property {
         // @name arms_raised
         // @input ElementTag(Boolean)
         // @Plugin Paper
+        // @group properties
         // @deprecated use 'aggressive'
         // @description
         // Deprecated in favor of <@link mechanism EntityTag.aggressive>.

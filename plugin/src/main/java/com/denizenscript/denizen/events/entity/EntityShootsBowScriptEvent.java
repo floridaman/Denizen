@@ -1,13 +1,14 @@
 package com.denizenscript.denizen.events.entity;
 
 import com.denizenscript.denizen.Denizen;
+import com.denizenscript.denizen.events.BukkitScriptEvent;
 import com.denizenscript.denizen.objects.EntityTag;
 import com.denizenscript.denizen.objects.ItemTag;
 import com.denizenscript.denizen.utilities.Conversion;
 import com.denizenscript.denizen.utilities.entity.Position;
 import com.denizenscript.denizen.utilities.implementation.BukkitScriptEntryData;
-import com.denizenscript.denizen.events.BukkitScriptEvent;
-import com.denizenscript.denizencore.objects.*;
+import com.denizenscript.denizencore.objects.Argument;
+import com.denizenscript.denizencore.objects.ObjectTag;
 import com.denizenscript.denizencore.objects.core.ElementTag;
 import com.denizenscript.denizencore.objects.core.ListTag;
 import com.denizenscript.denizencore.scripts.ScriptEntryData;
@@ -42,6 +43,7 @@ public class EntityShootsBowScriptEvent extends BukkitScriptEvent implements Lis
     // <context.bow> returns the ItemTag of the bow used to shoot.
     // <context.force> returns the force of the shot.
     // <context.item> returns an ItemTag of the shot projectile, if any.
+    // <context.hand> returns "HAND" or "OFF_HAND" for which hand the bow was in.
     //
     // @Determine
     // ListTag(EntityTag) to change the projectile(s) being shot. (Note that in certain cases, determining an arrow may not be valid).
@@ -66,10 +68,10 @@ public class EntityShootsBowScriptEvent extends BukkitScriptEvent implements Lis
     public boolean matches(ScriptPath path) {
         String attacker = path.eventArgLowerAt(0);
         String item = path.eventArgLowerAt(2);
-        if (!entity.tryAdvancedMatcher(attacker)) {
+        if (!entity.tryAdvancedMatcher(attacker, path.context)) {
             return false;
         }
-        if (!item.equals("bow") && !bow.tryAdvancedMatcher(item)) {
+        if (!item.equals("bow") && !bow.tryAdvancedMatcher(item, path.context)) {
             return false;
         }
         if (!runInCheck(path, entity.getLocation())) {
@@ -128,20 +130,15 @@ public class EntityShootsBowScriptEvent extends BukkitScriptEvent implements Lis
 
     @Override
     public ObjectTag getContext(String name) {
-        switch (name) {
-            case "entity":
-                return entity;
-            case "force":
-                return new ElementTag(event.getForce() * 3);
-            case "bow":
-                return bow;
-            case "projectile":
-                return projectile;
-        }
-        if (name.equals("item")) {
-            return new ItemTag(event.getConsumable());
-        }
-        return super.getContext(name);
+        return switch (name) {
+            case "entity" -> entity;
+            case "force" -> new ElementTag(event.getForce() * 3);
+            case "bow" -> bow;
+            case "projectile" -> projectile;
+            case "item" -> new ItemTag(event.getConsumable());
+            case "hand" -> new ElementTag(event.getHand());
+            default -> super.getContext(name);
+        };
     }
 
     @Override

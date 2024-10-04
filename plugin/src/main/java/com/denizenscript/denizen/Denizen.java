@@ -4,7 +4,12 @@ import com.denizenscript.denizen.events.ScriptEventRegistry;
 import com.denizenscript.denizen.events.bukkit.SavesReloadEvent;
 import com.denizenscript.denizen.events.server.ServerPrestartScriptEvent;
 import com.denizenscript.denizen.events.server.ServerStartScriptEvent;
-import com.denizenscript.denizen.nms.NMSVersion;
+import com.denizenscript.denizen.nms.NMSHandler;
+import com.denizenscript.denizen.nms.interfaces.FakeArrow;
+import com.denizenscript.denizen.nms.interfaces.FakePlayer;
+import com.denizenscript.denizen.nms.interfaces.ItemProjectile;
+import com.denizenscript.denizen.npc.DenizenNPCHelper;
+import com.denizenscript.denizen.npc.TraitRegistry;
 import com.denizenscript.denizen.objects.InventoryTag;
 import com.denizenscript.denizen.objects.NPCTag;
 import com.denizenscript.denizen.objects.PlayerTag;
@@ -17,7 +22,6 @@ import com.denizenscript.denizen.scripts.triggers.TriggerRegistry;
 import com.denizenscript.denizen.scripts.triggers.core.ChatTrigger;
 import com.denizenscript.denizen.tags.BukkitTagContext;
 import com.denizenscript.denizen.tags.core.NPCTagBase;
-import com.denizenscript.denizen.tags.core.ServerTagBase;
 import com.denizenscript.denizen.utilities.*;
 import com.denizenscript.denizen.utilities.blocks.FullBlockData;
 import com.denizenscript.denizen.utilities.command.*;
@@ -27,37 +31,31 @@ import com.denizenscript.denizen.utilities.command.manager.messaging.Messaging;
 import com.denizenscript.denizen.utilities.debugging.BStatsMetricsLite;
 import com.denizenscript.denizen.utilities.debugging.DebugSubmit;
 import com.denizenscript.denizen.utilities.debugging.StatsRecord;
-import com.denizenscript.denizen.utilities.world.WorldListChangeTracker;
-import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizen.utilities.depends.Depends;
 import com.denizenscript.denizen.utilities.entity.DenizenEntityType;
 import com.denizenscript.denizen.utilities.flags.PlayerFlagHandler;
 import com.denizenscript.denizen.utilities.flags.WorldFlagHandler;
 import com.denizenscript.denizen.utilities.implementation.DenizenCoreImplementation;
 import com.denizenscript.denizen.utilities.maps.DenizenMapManager;
-import com.denizenscript.denizen.nms.NMSHandler;
-import com.denizenscript.denizen.nms.interfaces.FakeArrow;
-import com.denizenscript.denizen.nms.interfaces.FakePlayer;
-import com.denizenscript.denizen.nms.interfaces.ItemProjectile;
-import com.denizenscript.denizen.npc.TraitRegistry;
-import com.denizenscript.denizen.npc.DenizenNPCHelper;
 import com.denizenscript.denizen.utilities.packets.NetworkInterceptHelper;
 import com.denizenscript.denizen.utilities.world.VoidGenerator;
-import com.denizenscript.denizen.utilities.world.VoidGenerator1_17;
+import com.denizenscript.denizen.utilities.world.WorldListChangeTracker;
 import com.denizenscript.denizencore.DenizenCore;
 import com.denizenscript.denizencore.objects.ObjectFetcher;
 import com.denizenscript.denizencore.objects.core.SecretTag;
 import com.denizenscript.denizencore.objects.core.TimeTag;
 import com.denizenscript.denizencore.objects.notable.NoteManager;
 import com.denizenscript.denizencore.scripts.ScriptHelper;
-import com.denizenscript.denizencore.scripts.commands.core.AdjustCommand;
 import com.denizenscript.denizencore.scripts.commands.queue.RunLaterCommand;
 import com.denizenscript.denizencore.utilities.CoreConfiguration;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
+import com.denizenscript.denizencore.utilities.debugging.Debug;
 import com.denizenscript.denizencore.utilities.debugging.DebugInternals;
 import com.denizenscript.denizencore.utilities.debugging.StrongWarning;
 import com.denizenscript.denizencore.utilities.text.ConfigUpdater;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -136,19 +134,22 @@ public class Denizen extends JavaPlugin {
         DebugInternals.alternateTrimLogic = FormattedTextHelper::bukkitSafeDebugTrimming;
         String javaVersion = System.getProperty("java.version");
         Debug.log("Running on java version: " + javaVersion);
-        if (javaVersion.startsWith("8") || javaVersion.startsWith("1.8")) {
-            Debug.log("Running on fully supported Java 8. Updating to Java 17+ is recommended.");
-        }
-        else if (javaVersion.startsWith("9") || javaVersion.startsWith("1.9") || javaVersion.startsWith("10") || javaVersion.startsWith("1.10")
-                || javaVersion.startsWith("11")
+        if (javaVersion.startsWith("8") || javaVersion.startsWith("1.8") || javaVersion.startsWith("9") || javaVersion.startsWith("1.9")
+                || javaVersion.startsWith("10") || javaVersion.startsWith("1.10") || javaVersion.startsWith("11")
                 || javaVersion.startsWith("12") || javaVersion.startsWith("13") || javaVersion.startsWith("14") || javaVersion.startsWith("15")) {
-            getLogger().warning("Running unreliable Java version. Old Minecraft is built for Java 8, modern Minecraft is built for Java 17. Other Java versions are not guaranteed to function properly.");
+            Debug.log("Running on outdated Java version somehow. Denizen requires Java 16+ or newer to function.");
         }
         else if (javaVersion.startsWith("16")) {
             Debug.log("Running on fully supported Java 16.");
         }
         else if (javaVersion.startsWith("17")) {
             Debug.log("Running on fully supported Java 17.");
+        }
+        else if (javaVersion.startsWith("18") || javaVersion.startsWith("19")) {
+            getLogger().warning("Running unreliable Java version. modern Minecraft versions are built for Java 21 or 17. Other Java versions are not guaranteed to function properly.");
+        }
+        else if (javaVersion.startsWith("21")) {
+            Debug.log("Running on fully supported Java 21.");
         }
         else {
             Debug.log("Running on unrecognized (future?) Java version. May or may not work.");
@@ -179,7 +180,7 @@ public class Denizen extends JavaPlugin {
                     getLogger().warning("Citizens is present but doesn't seem to be activated! You may have an error earlier in your logs, or you may have a broken plugin load order.");
                 }
                 else {
-                    getLogger().warning("Citizens does not seem to be available! Denizen will have greatly reduced functionality!");
+                    getLogger().warning("Citizens does not seem to be available! Denizen will have reduced functionality!");
                 }
             }
             startedSuccessful = true;
@@ -325,7 +326,6 @@ public class Denizen extends JavaPlugin {
             Debug.echoError(e);
         }
         try {
-            AdjustCommand.specialAdjustables.put("server", ServerTagBase::adjustServer);
             ScriptEventRegistry.registerMainEvents();
             CommonRegistries.registerMainObjects();
             CommonRegistries.registerMainTagHandlers();
@@ -369,7 +369,7 @@ public class Denizen extends JavaPlugin {
         exsCommand.enableFor(getCommand("exs"));
         FullBlockData.init();
         // Load script files without processing.
-        DenizenCore.preloadScripts();
+        DenizenCore.preloadScripts(false, null);
         // Load the saves.yml into memory
         reloadSaves();
         try {
@@ -449,7 +449,7 @@ public class Denizen extends JavaPlugin {
                 if (!StrongWarning.recentWarnings.isEmpty()) {
                     StringBuilder warnText = new StringBuilder();
                     warnText.append(ChatColor.YELLOW).append("[Denizen] ").append(ChatColor.RED).append("Recent strong system warnings, scripters need to address ASAP (check earlier console logs for details):");
-                    for (StrongWarning warning : StrongWarning.recentWarnings) {
+                    for (StrongWarning warning : StrongWarning.recentWarnings.keySet()) {
                         warnText.append("\n- ").append(warning.message);
                     }
                     StrongWarning.recentWarnings.clear();
@@ -481,7 +481,7 @@ public class Denizen extends JavaPlugin {
         hasDisabled = true;
         DenizenCore.shutdown();
         ScoreboardHelper._saveScoreboards();
-        InventoryScriptHelper._savePlayerInventories();
+        InventoryScriptHelper.savePlayerInventories();
         triggerRegistry.disableCoreMembers();
         getLogger().log(Level.INFO, " v" + getDescription().getVersion() + " disabled.");
         Bukkit.getServer().getScheduler().cancelTasks(this);
@@ -543,6 +543,7 @@ public class Denizen extends JavaPlugin {
         ScoreboardHelper._saveScoreboards();
         // Save maps to maps.yml
         DenizenMapManager.saveMaps();
+        InventoryScriptHelper.savePlayerInventories();
         // Save server flags
         try {
             scoreboardsConfig.save(scoreboardsConfigFile);
@@ -551,7 +552,7 @@ public class Denizen extends JavaPlugin {
             Logger.getLogger(JavaPlugin.class.getName()).log(Level.SEVERE, "Could not save to " + scoreboardsConfigFile, ex);
         }
         PlayerFlagHandler.saveAllNow(lockUntilDone);
-        worldFlags.saveAll();
+        worldFlags.saveAll(lockUntilDone);
         RunLaterCommand.saveToFile(!lockUntilDone);
     }
 
@@ -562,7 +563,7 @@ public class Denizen extends JavaPlugin {
                 return false;
             }
             if (args.length >= 2 && CoreUtilities.equalsIgnoreCase(args[0], "chat")) {
-                ChatTrigger.instance.syncChatTrigger(new PlayerChatEvent((Player) sender, Arrays.stream(args).skip(1).collect(Collectors.joining(" "))));
+                ChatTrigger.instance.chatTriggerInternal(new PlayerChatEvent((Player) sender, Arrays.stream(args).skip(1).collect(Collectors.joining(" "))));
                 return true;
             }
             if (args.length != 1) {
@@ -607,12 +608,10 @@ public class Denizen extends JavaPlugin {
 
     @Override
     public ChunkGenerator getDefaultWorldGenerator(String worldName, String id) {
-        if (CoreUtilities.toLowerCase(id).equals("void")) {
-            if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_17)) {
-                return new VoidGenerator1_17();
-            }
-            return new VoidGenerator();
-        }
-        return null;
+        return switch (CoreUtilities.toLowerCase(id)) {
+            case "void" -> new VoidGenerator(true);
+            case "void_biomes" -> new VoidGenerator(false);
+            default -> null;
+        };
     }
 }

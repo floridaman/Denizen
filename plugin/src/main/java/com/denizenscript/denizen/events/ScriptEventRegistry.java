@@ -66,6 +66,7 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(BlockCooksSmeltsItemScriptEvent.class);
         ScriptEvent.registerScriptEvent(BlockDestroyedByExplosionEvent.class);
         ScriptEvent.registerScriptEvent(BlockDispensesScriptEvent.class);
+        ScriptEvent.registerScriptEvent(BlockEquipsItemScriptEvent.class);
         ScriptEvent.registerScriptEvent(BlockExplodesScriptEvent.class);
         ScriptEvent.registerScriptEvent(BlockFadesScriptEvent.class);
         ScriptEvent.registerScriptEvent(BlockFallsScriptEvent.class);
@@ -73,11 +74,13 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(BlockGrowsScriptEvent.class);
         ScriptEvent.registerScriptEvent(BlockIgnitesScriptEvent.class);
         ScriptEvent.registerScriptEvent(BlockPhysicsScriptEvent.class);
+        ScriptEvent.registerScriptEvent(BlockShearEntityScriptEvent.class);
         ScriptEvent.registerScriptEvent(BlockSpreadsScriptEvent.class);
         ScriptEvent.registerScriptEvent(BrewingStandFueledScriptEvent.class);
         ScriptEvent.registerScriptEvent(BrewsScriptEvent.class);
         ScriptEvent.registerScriptEvent(CauldronLevelChangeScriptEvent.class);
         ScriptEvent.registerScriptEvent(FurnaceBurnsItemScriptEvent.class);
+        ScriptEvent.registerScriptEvent(FurnaceStartsSmeltingScriptEvent.class);
         ScriptEvent.registerScriptEvent(LeafDecaysScriptEvent.class);
         ScriptEvent.registerScriptEvent(LiquidLevelChangeScriptEvent.class);
         ScriptEvent.registerScriptEvent(LiquidSpreadScriptEvent.class);
@@ -85,8 +88,14 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(PistonExtendsScriptEvent.class);
         ScriptEvent.registerScriptEvent(PistonRetractsScriptEvent.class);
         ScriptEvent.registerScriptEvent(RedstoneScriptEvent.class);
+        ScriptEvent.registerScriptEvent(SpongeAbsorbsScriptEvent.class);
+        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_19)) {
+            ScriptEvent.registerScriptEvent(BrewingStartsScriptEvent.class);
+            ScriptEvent.registerScriptEvent(TNTPrimesScriptEvent.class);
+        }
 
         // Entity events
+        ScriptEvent.registerScriptEvent(AreaEffectCloudApplyScriptEvent.class);
         if (!Denizen.supportsPaper) {
             ScriptEvent.registerScriptEvent(AreaEnterExitScriptEvent.class);
         }
@@ -104,14 +113,15 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(EntityDespawnScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityDropsItemScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityEntersPortalScriptEvent.class);
-        ScriptEvent.registerScriptEvent(EntityEntersVehicleScriptEvent.class);
+        ScriptEvent.registerScriptEvent(NMSHandler.entityHelper.getEntersVehicleEventImpl());
         ScriptEvent.registerScriptEvent(EntityExitsPortalScriptEvent.class);
-        ScriptEvent.registerScriptEvent(EntityExitsVehicleScriptEvent.class);
+        ScriptEvent.registerScriptEvent(NMSHandler.entityHelper.getExitsVehicleEventImpl());
         ScriptEvent.registerScriptEvent(EntityExplodesScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityExplosionPrimesScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityFoodLevelChangeScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityFormsBlockScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityGlideScriptEvent.class);
+        ScriptEvent.registerScriptEvent(EntityGoesIntoBlockScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityHealsScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityInteractScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityKilledScriptEvent.class);
@@ -121,6 +131,7 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(EntityShootsBowScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntitySpawnerSpawnScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntitySpawnScriptEvent.class);
+        ScriptEvent.registerScriptEvent(EntitySpellCastScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntitySwimScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityTamesScriptEvent.class);
         ScriptEvent.registerScriptEvent(EntityTargetsScriptEvent.class);
@@ -132,8 +143,7 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(HorseJumpsScriptEvent.class);
         ScriptEvent.registerScriptEvent(PiglinBarterScriptEvent.class);
         ScriptEvent.registerScriptEvent(PigZappedScriptEvent.class);
-        ScriptEvent.registerScriptEvent(ProjectileHitsBlockScriptEvent.class);
-        ScriptEvent.registerScriptEvent(ProjectileHitsEntityScriptEvent.class);
+        ScriptEvent.registerScriptEvent(ProjectileHitScriptEvent.class);
         ScriptEvent.registerScriptEvent(ProjectileLaunchedScriptEvent.class);
         ScriptEvent.registerScriptEvent(SheepDyedScriptEvent.class);
         ScriptEvent.registerScriptEvent(SheepRegrowsScriptEvent.class);
@@ -163,6 +173,7 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(HotbarScrollScriptEvent.class);
         ScriptEvent.registerScriptEvent(ExperienceBottleBreaksScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerAnimatesScriptEvent.class);
+        ScriptEvent.registerScriptEvent(PlayerArmorStandManipulateScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerBreaksBlockScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerBreaksItemScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerChangesMainHandScriptEvent.class);
@@ -187,9 +198,10 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(PlayerFishesScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerFlyingScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerHearsSoundScriptEvent.class);
-        ScriptEvent.registerScriptEvent(PlayerHoldsItemEvent.class);
         ScriptEvent.registerScriptEvent(PlayerIncreasesExhaustionLevelScriptEvent.class);
-        ScriptEvent.registerScriptEvent(PlayerItemTakesDamageScriptEvent.class);
+        if (!Denizen.supportsPaper) {
+            ScriptEvent.registerScriptEvent(PlayerItemTakesDamageScriptEvent.class);
+        }
         ScriptEvent.registerScriptEvent(PlayerJoinsScriptEvent.class);
         if (!Denizen.supportsPaper) {
             ScriptEvent.registerScriptEvent(PlayerJumpScriptEvent.PlayerJumpsSpigotScriptEventImpl.class);
@@ -209,6 +221,9 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(PlayerPreparesAnvilCraftScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerPreparesEnchantScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerQuitsScriptEvent.class);
+        if (!Denizen.supportsPaper || NMSHandler.getVersion().isAtMost(NMSVersion.v1_17)) {
+            ScriptEvent.registerScriptEvent(PlayerRaiseLowerItemScriptEvent.PlayerRaiseLowerItemScriptEventSpigotImpl.class);
+        }
         ScriptEvent.registerScriptEvent(PlayerReceivesActionbarScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerReceivesCommandsScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerReceivesMessageScriptEvent.class);
@@ -227,6 +242,9 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(PlayerStatisticIncrementsScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerSteersEntityScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerStepsOnScriptEvent.class);
+        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_18)) {
+            ScriptEvent.registerScriptEvent(PlayerStopsDamagingBlockScriptEvent.class);
+        }
         ScriptEvent.registerScriptEvent(PlayerSwapsItemsScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerTakesFromFurnaceScriptEvent.class);
         ScriptEvent.registerScriptEvent(PlayerTakesFromLecternScriptEvent.class);
@@ -256,17 +274,11 @@ public class ScriptEventRegistry {
         ScriptEvent.registerScriptEvent(VehicleMoveScriptEvent.class);
 
         // World events
-        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_17)) {
-            ScriptEvent.registerScriptEvent(ChunkLoadEntitiesScriptEvent.class);
-        }
+        ScriptEvent.registerScriptEvent(ChunkLoadEntitiesScriptEvent.class);
         ScriptEvent.registerScriptEvent(ChunkLoadScriptEvent.class);
-        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_17)) {
-            ScriptEvent.registerScriptEvent(ChunkUnloadEntitiesScriptEvent.class);
-        }
+        ScriptEvent.registerScriptEvent(ChunkUnloadEntitiesScriptEvent.class);
         ScriptEvent.registerScriptEvent(ChunkUnloadScriptEvent.class);
-        if (NMSHandler.getVersion().isAtLeast(NMSVersion.v1_17)) {
-            ScriptEvent.registerScriptEvent(GenericGameEventScriptEvent.class);
-        }
+        ScriptEvent.registerScriptEvent(GenericGameEventScriptEvent.class);
         ScriptEvent.registerScriptEvent(LightningStrikesScriptEvent.class);
         ScriptEvent.registerScriptEvent(LingeringPotionSplashScriptEvent.class);
         ScriptEvent.registerScriptEvent(LootGenerateScriptEvent.class);

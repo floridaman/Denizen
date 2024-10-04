@@ -2,7 +2,10 @@ package com.denizenscript.denizen.nms.v1_19;
 
 import com.denizenscript.denizen.Denizen;
 import com.denizenscript.denizen.nms.NMSHandler;
-import com.denizenscript.denizen.nms.abstracts.*;
+import com.denizenscript.denizen.nms.abstracts.BiomeNMS;
+import com.denizenscript.denizen.nms.abstracts.BlockLight;
+import com.denizenscript.denizen.nms.abstracts.ProfileEditor;
+import com.denizenscript.denizen.nms.abstracts.Sidebar;
 import com.denizenscript.denizen.nms.util.PlayerProfile;
 import com.denizenscript.denizen.nms.util.jnbt.CompoundTag;
 import com.denizenscript.denizen.nms.util.jnbt.Tag;
@@ -13,8 +16,8 @@ import com.denizenscript.denizen.nms.v1_19.impl.SidebarImpl;
 import com.denizenscript.denizen.nms.v1_19.impl.blocks.BlockLightImpl;
 import com.denizenscript.denizen.nms.v1_19.impl.jnbt.CompoundTagImpl;
 import com.denizenscript.denizen.objects.ItemTag;
-import com.denizenscript.denizen.utilities.PaperAPITools;
 import com.denizenscript.denizen.utilities.FormattedTextHelper;
+import com.denizenscript.denizen.utilities.PaperAPITools;
 import com.denizenscript.denizencore.utilities.CoreConfiguration;
 import com.denizenscript.denizencore.utilities.CoreUtilities;
 import com.denizenscript.denizencore.utilities.ReflectionHelper;
@@ -30,7 +33,7 @@ import net.md_5.bungee.api.chat.hover.content.Item;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import net.md_5.bungee.chat.ComponentSerializer;
 import net.minecraft.core.Holder;
-import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.TagParser;
@@ -40,6 +43,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.BossEvent;
 import net.minecraft.world.Container;
 import net.minecraft.world.Nameable;
 import net.minecraft.world.entity.Entity;
@@ -48,18 +52,22 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.biome.Biome;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.craftbukkit.v1_19_R1.CraftServer;
-import org.bukkit.craftbukkit.v1_19_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_19_R1.entity.CraftPlayer;
-import org.bukkit.craftbukkit.v1_19_R1.inventory.CraftInventory;
-import org.bukkit.craftbukkit.v1_19_R1.inventory.CraftInventoryCustom;
-import org.bukkit.craftbukkit.v1_19_R1.inventory.CraftInventoryView;
-import org.bukkit.craftbukkit.v1_19_R1.inventory.CraftItemStack;
-import org.bukkit.craftbukkit.v1_19_R1.persistence.CraftPersistentDataContainer;
-import org.bukkit.craftbukkit.v1_19_R1.util.CraftChatMessage;
-import org.bukkit.craftbukkit.v1_19_R1.util.CraftMagicNumbers;
+import org.bukkit.boss.BossBar;
+import org.bukkit.craftbukkit.v1_19_R3.CraftServer;
+import org.bukkit.craftbukkit.v1_19_R3.CraftWorld;
+import org.bukkit.craftbukkit.v1_19_R3.boss.CraftBossBar;
+import org.bukkit.craftbukkit.v1_19_R3.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftInventory;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftInventoryCustom;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftInventoryView;
+import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_19_R3.persistence.CraftPersistentDataContainer;
+import org.bukkit.craftbukkit.v1_19_R3.util.CraftChatMessage;
+import org.bukkit.craftbukkit.v1_19_R3.util.CraftMagicNumbers;
+import org.bukkit.craftbukkit.v1_19_R3.util.CraftNamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
@@ -72,6 +80,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class Handler extends NMSHandler {
 
@@ -85,7 +94,6 @@ public class Handler extends NMSHandler {
         fishingHelper = new FishingHelperImpl();
         itemHelper = new ItemHelperImpl();
         packetHelper = new PacketHelperImpl();
-        particleHelper = new ParticleHelper();
         playerHelper = new PlayerHelperImpl();
         worldHelper = new WorldHelperImpl();
         enchantmentHelper = new EnchantmentHelperImpl();
@@ -108,7 +116,7 @@ public class Handler extends NMSHandler {
 
     @Override
     public boolean isCorrectMappingsCode() {
-        return ((CraftMagicNumbers) CraftMagicNumbers.INSTANCE).getMappingsVersion().equals("69c84c88aeb92ce9fa9525438b93f4fe");
+        return ((CraftMagicNumbers) CraftMagicNumbers.INSTANCE).getMappingsVersion().equals("3009edc0fff87fa34680686663bd59df");
     }
 
     @Override
@@ -167,11 +175,6 @@ public class Handler extends NMSHandler {
             }
         }
         return null;
-    }
-
-    @Override
-    public int getPort() {
-        return ((CraftServer) Bukkit.getServer()).getServer().getPort();
     }
 
     public static MethodHandle PAPER_INVENTORY_TITLE_GETTER;
@@ -259,16 +262,16 @@ public class Handler extends NMSHandler {
     public List<BiomeNMS> getBiomes(World world) {
         ServerLevel level = ((CraftWorld) world).getHandle();
         ArrayList<BiomeNMS> output = new ArrayList<>();
-        for (Map.Entry<ResourceKey<Biome>, Biome> pair : level.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY).entrySet()) {
-            output.add(new BiomeNMSImpl(level, pair.getKey().location().toString()));
+        for (Map.Entry<ResourceKey<Biome>, Biome> pair : level.registryAccess().registryOrThrow(Registries.BIOME).entrySet()) {
+            output.add(new BiomeNMSImpl(level, CraftNamespacedKey.fromMinecraft(pair.getKey().location())));
         }
         return output;
     }
 
     @Override
-    public BiomeNMS getBiomeNMS(World world, String name) {
-        BiomeNMSImpl impl = new BiomeNMSImpl(((CraftWorld) world).getHandle(), name);
-        if (impl.biomeBase == null) {
+    public BiomeNMS getBiomeNMS(World world, NamespacedKey key) {
+        BiomeNMSImpl impl = new BiomeNMSImpl(((CraftWorld) world).getHandle(), key);
+        if (impl.biomeHolder == null) {
             return null;
         }
         return impl;
@@ -279,9 +282,8 @@ public class Handler extends NMSHandler {
         // Based on CraftWorld source
         ServerLevel level = ((CraftWorld) block.getWorld()).getHandle();
         Holder<Biome> biome = level.getNoiseBiome(block.getX() >> 2, block.getY() >> 2, block.getZ() >> 2);
-        ResourceLocation key = level.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY).getKey(biome.value());
-        String keyText = key.getNamespace().equals("minecraft") ? key.getPath() : key.toString();
-        return new BiomeNMSImpl(level, keyText);
+        ResourceLocation key = level.registryAccess().registryOrThrow(Registries.BIOME).getKey(biome.value());
+        return new BiomeNMSImpl(level, CraftNamespacedKey.fromMinecraft(key));
     }
 
     @Override
@@ -355,6 +357,23 @@ public class Handler extends NMSHandler {
         return null;
     }
 
+    @Override
+    public UUID getBossbarUUID(BossBar bar) {
+        return ((CraftBossBar) bar).getHandle().getId();
+    }
+
+    public static MethodHandle BOSSBAR_ID_SETTER = ReflectionHelper.getFinalSetterForFirstOfType(BossEvent.class, UUID.class);
+
+    @Override
+    public void setBossbarUUID(BossBar bar, UUID id) {
+        try {
+            BOSSBAR_ID_SETTER.invoke(((CraftBossBar) bar).getHandle(), id);
+        }
+        catch (Throwable ex) {
+            Debug.echoError(ex);
+        }
+    }
+
     public static BaseComponent[] componentToSpigot(Component nms) {
         if (nms == null) {
             return null;
@@ -367,7 +386,7 @@ public class Handler extends NMSHandler {
         if (spigot == null) {
             return null;
         }
-        String json = ComponentSerializer.toString(spigot);
+        String json = FormattedTextHelper.componentToJson(spigot);
         return Component.Serializer.fromJson(json);
     }
 }

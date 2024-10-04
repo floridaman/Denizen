@@ -31,13 +31,13 @@ public class MaterialDistance implements Property {
             "distance"
     };
 
-    private MaterialDistance(MaterialTag _material) {
+    public MaterialDistance(MaterialTag _material) {
         material = _material;
     }
 
     MaterialTag material;
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <MaterialTag.distance>

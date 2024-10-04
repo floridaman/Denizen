@@ -28,7 +28,7 @@ public class EntityChestCarrier implements Property {
             "carries_chest"
     };
 
-    private EntityChestCarrier(EntityTag entity) {
+    public EntityChestCarrier(EntityTag entity) {
         this.entity = entity;
     }
 
@@ -48,7 +48,7 @@ public class EntityChestCarrier implements Property {
         return (ChestedHorse) entity.getBukkitEntity();
     }
 
-    public static void registerTags() {
+    public static void register() {
 
         // <--[tag]
         // @attribute <EntityTag.carries_chest>

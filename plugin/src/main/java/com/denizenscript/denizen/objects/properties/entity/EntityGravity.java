@@ -31,7 +31,7 @@ public class EntityGravity implements Property {
             "gravity"
     };
 
-    private EntityGravity(EntityTag entity) {
+    public EntityGravity(EntityTag entity) {
         dentity = entity;
     }
 
@@ -95,7 +95,7 @@ public class EntityGravity implements Property {
         // -->
         if (mechanism.matches("gravity") && mechanism.requireBoolean()) {
             if (dentity.isCitizensNPC()) {
-                dentity.getDenizenNPC().getCitizen().getOrAddTrait(Gravity.class).gravitate(!mechanism.getValue().asBoolean());
+                dentity.getDenizenNPC().getCitizen().getOrAddTrait(Gravity.class).setHasGravity(mechanism.getValue().asBoolean());
             }
             else {
                 dentity.getBukkitEntity().setGravity(mechanism.getValue().asBoolean());
